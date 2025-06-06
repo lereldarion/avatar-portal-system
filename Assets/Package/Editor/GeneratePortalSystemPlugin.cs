@@ -1,0 +1,165 @@
+using System.Linq;
+using System.Collections.Generic;
+using AnimatorAsCode.V1;
+using AnimatorAsCode.V1.VRC;
+using nadena.dev.ndmf;
+using UnityEngine;
+using VRC.SDK3.Dynamics.Constraint.Components;
+using VRC.SDK3.Dynamics.Contact.Components;
+using VRC.SDK3.Dynamics.PhysBone.Components;
+
+[assembly: ExportsPlugin(typeof(Lereldarion.Portal.GeneratePortalSystemPlugin))]
+
+namespace Lereldarion.Portal
+{
+    public class GeneratePortalSystemPlugin : Plugin<GeneratePortalSystemPlugin>
+    {
+        public override string DisplayName => "Lereldarion Portal System: Generate Mesh";
+
+        protected override void Configure()
+        {
+            InPhase(BuildPhase.Generating).Run(DisplayName, Generate);
+        }
+
+        private void Generate(BuildContext ctx)
+        {
+            var aac = AacV1.Create(new AacConfiguration
+            {
+                SystemName = "Portal",
+                AnimatorRoot = ctx.AvatarRootTransform,
+                DefaultValueRoot = ctx.AvatarRootTransform,
+                AssetKey = UnityEditor.GUID.Generate().ToString(),
+                AssetContainer = ctx.AssetContainer,
+                ContainerMode = AacConfiguration.Container.OnlyWhenPersistenceRequired,
+                DefaultsProvider = new AacDefaultsProvider()
+            });
+            var animator_controller = aac.NewAnimatorController();
+            var animator_context = new AnimatorContext
+            {
+                Aac = aac,
+            };
+
+            foreach (var system in ctx.AvatarRootTransform.GetComponentsInChildren<PortalSystem>(true))
+            {
+                var mesh = SetupController(system, animator_context);
+                ctx.AssetSaver.SaveAsset(mesh); // Required for proper upload
+            }
+
+            var ma_object = new GameObject("Portal_Animator") { transform = { parent = ctx.AvatarRootTransform } };
+            var ma = AnimatorAsCode.V1.ModularAvatar.MaAc.Create(ma_object);
+            ma.NewMergeAnimator(animator_controller, VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX);
+        }
+
+        /// <summary>
+        /// Generated mesh vertex data.
+        /// Using float2 uv because avatar optimizer tools do not like float4 uvs...
+        /// </summary>
+        private class Vertex
+        {
+            /// <summary>Position and bone assignment</summary>
+            public Transform transform;
+            /// <summary>
+            /// uv0 = (type, screen_x).
+            /// type is the type of element (ShaderElementType), and controls what the shader code should compute.
+            /// screen_x is the channel layout : [auto_offset_tag:1][controllers:127][note:127]
+            /// </summary>
+            public Vector2 uv0;
+            /// <summary>uv1 type-dependent data</summary>
+            public Vector2 uv1;
+            /// <summary>A direction vector stored in normal slot. Will be rotated. Value here in world space.</summary>
+            public Vector3 direction = Vector3.forward;
+        };
+
+        /// <summary>
+        /// Create controller mesh renderer, animator layers, gameobjects from descriptor components.
+        /// Remove descriptors from the ndmf copy, to allow d4rkAvatarOptimizer to see no reference to gameobjects and merge properly.
+        /// </summary>
+        /// <param name="system">Controller root component : start of search for descriptors, and location where renderer is added</param>
+        /// <returns>Reference to the created mesh, to be saved as asset by ndmf</returns>
+        private Mesh SetupController(PortalSystem system, AnimatorContext animator)
+        {
+            Transform root = system.transform;
+            Mesh mesh = new Mesh();
+            var vertices = new List<Vertex>();
+            var context = new Context { Animator = animator, System = system, Vertices = vertices };
+
+            {
+                // Auto offset tag
+                var uv0 = new Vector2(0f, 0.0f);
+                vertices.Add(new Vertex { transform = root, uv0 = uv0 });
+                vertices.Add(new Vertex { transform = root, uv0 = uv0 });
+                vertices.Add(new Vertex { transform = root, uv0 = uv0 });
+            }
+
+            foreach (var portal in root.GetComponentsInChildren<Portal>(true)) { SetupPortal(portal, context); }
+
+            mesh.vertices = vertices.Select(vertex => root.InverseTransformPoint(vertex.transform.position)).ToArray();
+            mesh.SetUVs(0, vertices.Select(vertex => vertex.uv0).ToArray());
+            mesh.SetUVs(1, vertices.Select(vertex => vertex.uv1).ToArray());
+            mesh.SetNormals(vertices.Select(vertex => root.InverseTransformDirection(vertex.direction)).ToArray());
+            mesh.triangles = Enumerable.Range(0, vertices.Count()).ToArray();
+
+            Transform[] bones = vertices.Select(vertex => vertex.transform).ToArray();
+            mesh.boneWeights = Enumerable.Range(0, vertices.Count()).Select(i =>
+            {
+                var bw = new BoneWeight();
+                bw.boneIndex0 = i;
+                bw.weight0 = 1;
+                return bw;
+            }).ToArray();
+            mesh.bindposes = bones.Select(bone => bone.worldToLocalMatrix * root.localToWorldMatrix).ToArray();
+
+            var renderer = root.gameObject.AddComponent<SkinnedMeshRenderer>();
+            renderer.sharedMesh = mesh;
+            renderer.bones = bones;
+            renderer.material = system.Material;
+
+            Object.DestroyImmediate(system); // Cleanup components
+            return mesh;
+        }
+
+        private class Context
+        {
+            public AnimatorContext Animator;
+            public PortalSystem System;
+            public List<Vertex> Vertices;
+        }
+        private class AnimatorContext
+        {
+            public AacFlBase Aac;
+
+            private int id = 0;
+            public int UniqueId() { return id++; }
+        }
+
+        /// <summary>
+        /// Add a portal to the system.
+        /// </summary>
+        /// <param name="portal">Portal descriptor</param>
+        /// <param name="context">Data of the current portal system being built</param>
+        /// <exception cref="System.ArgumentException"></exception>
+        private void SetupPortal(Portal portal, Context context)
+        {
+            Transform transform = portal.transform;
+
+
+            Object.DestroyImmediate(portal); // Remove items before upload
+        }
+
+        static private System.Action<AacFlEditClip> SetConstraintActive(VRC.Dynamics.VRCConstraintBase constraint, bool active)
+        {
+            return clip => { clip.Animates(constraint, "IsActive").WithOneFrame(active ? 1 : 0); };
+        }
+
+        static private System.Action<AacFlEditClip> SetConstraintActiveSource(VRC.Dynamics.VRCConstraintBase constraint, int active_source)
+        {
+            return clip =>
+            {
+                for (int i = 0; i < constraint.Sources.Count; i += 1)
+                {
+                    clip.Animates(constraint, $"Sources.source{i}.Weight").WithOneFrame(i == active_source ? 1 : 0);
+                }
+            };
+        }
+    }
+}

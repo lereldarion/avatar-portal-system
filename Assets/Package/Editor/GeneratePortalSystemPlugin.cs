@@ -41,7 +41,7 @@ namespace Lereldarion.Portal
 
             foreach (var system in ctx.AvatarRootTransform.GetComponentsInChildren<PortalSystem>(true))
             {
-                var mesh = SetupController(system, animator_context);
+                var mesh = SetupPortalSystem(system, animator_context);
                 ctx.AssetSaver.SaveAsset(mesh); // Required for proper upload
             }
 
@@ -52,52 +52,40 @@ namespace Lereldarion.Portal
 
         /// <summary>
         /// Generated mesh vertex data.
-        /// Using float2 uv because avatar optimizer tools do not like float4 uvs...
+        /// One point per portal.
         /// </summary>
         private class Vertex
         {
-            /// <summary>Position and bone assignment</summary>
+            /// <summary>Position, orientation(normal, tangent), bone assignment of portal point</summary>
             public Transform transform;
-            /// <summary>
-            /// uv0 = (type, screen_x).
-            /// type is the type of element (ShaderElementType), and controls what the shader code should compute.
-            /// screen_x is the channel layout : [auto_offset_tag:1][controllers:127][note:127]
-            /// </summary>
+            /// <summary>uv0 = portal size XY</summary>
             public Vector2 uv0;
-            /// <summary>uv1 type-dependent data</summary>
-            public Vector2 uv1;
-            /// <summary>A direction vector stored in normal slot. Will be rotated. Value here in world space.</summary>
-            public Vector3 direction = Vector3.forward;
         };
 
         /// <summary>
-        /// Create controller mesh renderer, animator layers, gameobjects from descriptor components.
+        /// Create portal mesh renderer, animator layers, gameobjects from descriptor components.
         /// Remove descriptors from the ndmf copy, to allow d4rkAvatarOptimizer to see no reference to gameobjects and merge properly.
         /// </summary>
         /// <param name="system">Controller root component : start of search for descriptors, and location where renderer is added</param>
         /// <returns>Reference to the created mesh, to be saved as asset by ndmf</returns>
-        private Mesh SetupController(PortalSystem system, AnimatorContext animator)
+        private Mesh SetupPortalSystem(PortalSystem system, AnimatorContext animator)
         {
             Transform root = system.transform;
             Mesh mesh = new Mesh();
             var vertices = new List<Vertex>();
             var context = new Context { Animator = animator, System = system, Vertices = vertices };
 
-            {
-                // Auto offset tag
-                var uv0 = new Vector2(0f, 0.0f);
-                vertices.Add(new Vertex { transform = root, uv0 = uv0 });
-                vertices.Add(new Vertex { transform = root, uv0 = uv0 });
-                vertices.Add(new Vertex { transform = root, uv0 = uv0 });
-            }
-
             foreach (var portal in root.GetComponentsInChildren<Portal>(true)) { SetupPortal(portal, context); }
 
             mesh.vertices = vertices.Select(vertex => root.InverseTransformPoint(vertex.transform.position)).ToArray();
+            mesh.SetNormals(vertices.Select(vertex => root.InverseTransformVector(vertex.transform.TransformVector(Vector3.forward))).ToArray());
+            mesh.SetTangents(vertices.Select(vertex =>
+            {
+                Vector3 v = root.InverseTransformVector(vertex.transform.TransformVector(Vector3.right));
+                return new Vector4(v.x, v.y, v.z, 1f);
+            }).ToArray());
             mesh.SetUVs(0, vertices.Select(vertex => vertex.uv0).ToArray());
-            mesh.SetUVs(1, vertices.Select(vertex => vertex.uv1).ToArray());
-            mesh.SetNormals(vertices.Select(vertex => root.InverseTransformDirection(vertex.direction)).ToArray());
-            mesh.triangles = Enumerable.Range(0, vertices.Count()).ToArray();
+            mesh.SetIndices(Enumerable.Range(0, vertices.Count()).ToArray(), MeshTopology.Points, 0);
 
             Transform[] bones = vertices.Select(vertex => vertex.transform).ToArray();
             mesh.boneWeights = Enumerable.Range(0, vertices.Count()).Select(i =>
@@ -140,8 +128,7 @@ namespace Lereldarion.Portal
         /// <exception cref="System.ArgumentException"></exception>
         private void SetupPortal(Portal portal, Context context)
         {
-            Transform transform = portal.transform;
-
+            context.Vertices.Add(new Vertex { transform = portal.transform, uv0 = portal.Size });
 
             Object.DestroyImmediate(portal); // Remove items before upload
         }

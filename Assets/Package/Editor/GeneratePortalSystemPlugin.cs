@@ -51,15 +51,18 @@ namespace Lereldarion.Portal
         }
 
         /// <summary>
-        /// Generated mesh vertex data.
-        /// One point per portal.
+        /// We will generate one point per portal.
+        /// Gather data from portal components here.
         /// </summary>
-        private class Vertex
+        private class PortalEncoding
         {
-            /// <summary>Position, orientation(normal, tangent), bone assignment of portal point</summary>
+            /// <summary>
+            /// Position, bone assignment of portal point.
+            /// </summary>
             public Transform transform;
-            /// <summary>uv0 = portal size XY</summary>
-            public Vector2 uv0;
+            // For now only Quad portal, encode XY direction and lengths into normal / tangent
+            public Vector3 normal;
+            public Vector3 tangent;
         };
 
         /// <summary>
@@ -72,23 +75,22 @@ namespace Lereldarion.Portal
         {
             Transform root = system.transform;
             Mesh mesh = new Mesh();
-            var vertices = new List<Vertex>();
-            var context = new Context { Animator = animator, System = system, Vertices = vertices };
+            var portal_encodings = new List<PortalEncoding>();
+            var context = new Context { Animator = animator, System = system, portal_encodings = portal_encodings };
 
-            foreach (var portal in root.GetComponentsInChildren<Portal>(true)) { SetupPortal(portal, context); }
+            foreach (var portal in root.GetComponentsInChildren<QuadPortal>(true)) { SetupPortal(portal, context); }
 
-            mesh.vertices = vertices.Select(vertex => root.InverseTransformPoint(vertex.transform.position)).ToArray();
-            mesh.SetNormals(vertices.Select(vertex => root.InverseTransformVector(vertex.transform.TransformVector(Vector3.forward))).ToArray());
-            mesh.SetTangents(vertices.Select(vertex =>
+            mesh.vertices = portal_encodings.Select(portal => root.InverseTransformPoint(portal.transform.position)).ToArray();
+            mesh.SetNormals(portal_encodings.Select(portal => root.InverseTransformVector(portal.transform.TransformVector(portal.normal))).ToArray());
+            mesh.SetTangents(portal_encodings.Select(portal =>
             {
-                Vector3 v = root.InverseTransformVector(vertex.transform.TransformVector(Vector3.right));
+                Vector3 v = root.InverseTransformVector(portal.transform.TransformVector(portal.tangent));
                 return new Vector4(v.x, v.y, v.z, 1f);
             }).ToArray());
-            mesh.SetUVs(0, vertices.Select(vertex => vertex.uv0).ToArray());
-            mesh.SetIndices(Enumerable.Range(0, vertices.Count()).ToArray(), MeshTopology.Points, 0);
+            mesh.SetIndices(Enumerable.Range(0, portal_encodings.Count()).ToArray(), MeshTopology.Points, 0);
 
-            Transform[] bones = vertices.Select(vertex => vertex.transform).ToArray();
-            mesh.boneWeights = Enumerable.Range(0, vertices.Count()).Select(i =>
+            Transform[] bones = portal_encodings.Select(vertex => vertex.transform).ToArray();
+            mesh.boneWeights = Enumerable.Range(0, portal_encodings.Count()).Select(i =>
             {
                 var bw = new BoneWeight();
                 bw.boneIndex0 = i;
@@ -110,7 +112,7 @@ namespace Lereldarion.Portal
         {
             public AnimatorContext Animator;
             public PortalSystem System;
-            public List<Vertex> Vertices;
+            public List<PortalEncoding> portal_encodings;
         }
         private class AnimatorContext
         {
@@ -126,9 +128,14 @@ namespace Lereldarion.Portal
         /// <param name="portal">Portal descriptor</param>
         /// <param name="context">Data of the current portal system being built</param>
         /// <exception cref="System.ArgumentException"></exception>
-        private void SetupPortal(Portal portal, Context context)
+        private void SetupPortal(QuadPortal portal, Context context)
         {
-            context.Vertices.Add(new Vertex { transform = portal.transform, uv0 = portal.Size });
+            context.portal_encodings.Add(new PortalEncoding
+            {
+                transform = portal.transform,
+                normal = new Vector3(portal.Size.x, 0, 0),
+                tangent = new Vector3(0, portal.Size.y, 0),
+            });
 
             Object.DestroyImmediate(portal); // Remove items before upload
         }

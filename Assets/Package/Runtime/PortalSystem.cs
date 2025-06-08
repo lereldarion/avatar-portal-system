@@ -5,7 +5,8 @@ namespace Lereldarion.Portal
 {
     /// <summary>
     /// Root of a portal system.
-    /// Will generate a skinned mesh TODO.
+    /// 
+    /// TODO handle link to animator, portal ordering, etc...
     /// </summary>
     [DisallowMultipleComponent]
     public class PortalSystem : MonoBehaviour, IEditorOnly

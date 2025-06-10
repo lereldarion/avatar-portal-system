@@ -63,6 +63,7 @@ namespace Lereldarion.Portal
             // For now only Quad portal, encode XY direction and lengths into normal / tangent
             public Vector3 normal;
             public Vector3 tangent;
+            public Vector2 uv0;
         };
 
         /// <summary>
@@ -78,7 +79,7 @@ namespace Lereldarion.Portal
             var portal_encodings = new List<PortalEncoding>();
             var context = new Context { Animator = animator, System = system, portal_encodings = portal_encodings };
 
-            foreach (var portal in root.GetComponentsInChildren<QuadPortal>(true)) { SetupPortal(portal, context); }
+            foreach (var portal in root.GetComponentsInChildren<QuadPortal>(true)) { SetupQuadPortal(portal, context); }
 
             mesh.vertices = portal_encodings.Select(portal => root.InverseTransformPoint(portal.transform.position)).ToArray();
             mesh.SetNormals(portal_encodings.Select(portal => root.InverseTransformVector(portal.transform.TransformVector(portal.normal))).ToArray());
@@ -87,6 +88,7 @@ namespace Lereldarion.Portal
                 Vector3 v = root.InverseTransformVector(portal.transform.TransformVector(portal.tangent));
                 return new Vector4(v.x, v.y, v.z, 1f);
             }).ToArray());
+            mesh.SetUVs(0, portal_encodings.Select(portal => portal.uv0).ToArray());
             mesh.SetIndices(Enumerable.Range(0, portal_encodings.Count()).ToArray(), MeshTopology.Points, 0);
 
             Transform[] bones = portal_encodings.Select(vertex => vertex.transform).ToArray();
@@ -128,13 +130,14 @@ namespace Lereldarion.Portal
         /// <param name="portal">Portal descriptor</param>
         /// <param name="context">Data of the current portal system being built</param>
         /// <exception cref="System.ArgumentException"></exception>
-        private void SetupPortal(QuadPortal portal, Context context)
+        private void SetupQuadPortal(QuadPortal portal, Context context)
         {
             context.portal_encodings.Add(new PortalEncoding
             {
                 transform = portal.transform,
                 normal = new Vector3(portal.Size.x, 0, 0),
                 tangent = new Vector3(0, portal.Size.y, 0),
+                uv0 = new Vector2(portal.Shape == QuadPortal.ShapeType.Rectangle ? 0f : 1f, 0f),
             });
 
             Object.DestroyImmediate(portal); // Remove items before upload

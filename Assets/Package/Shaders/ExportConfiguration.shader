@@ -1,13 +1,4 @@
-
-// Encoding :
-// 1 system control pixel at (0, 0) :
-// - R = f16 sentinel value (>1) to check if system is enabled & grabpass is RGBA16_FLOAT and not RGBA8_UNORM. Currently UNITY_PI
-// - G = u14 bitmask for enabled portals
-// Portal i : 3 pixels at ([1..3]+3*i, 0).
-// - Pixel 1 : xyzw as u14[0..3]
-// - Pixel 2 : xyz = normal f16, w as u14[4]
-// - Pixel 3 : xyz = tangent f16, w as u14[5]
-// TODO ellipse bit
+// Export configuration of portal points to grabpass.
 
 Shader "Lereldarion/Portal/ExportConfiguration" {
     Properties {
@@ -48,9 +39,7 @@ Shader "Lereldarion/Portal/ExportConfiguration" {
             #pragma geometry geometry_stage
             #pragma fragment fragment_stage
 
-            static const int world_position_bits = 27;
-            static const float world_position_precision = 0.001;
-
+            
             struct MeshData {
                 float3 position : POSITION;
                 float3 normal : NORMAL;
@@ -60,9 +49,9 @@ Shader "Lereldarion/Portal/ExportConfiguration" {
             };
             struct PortalData {
                 float3 position : W_POSITION;
-                float3 normal : W_NORMAL;
-                float3 tangent : W_TANGENT;
-                float mode : MODE;
+                float3 x_axis : X_AXIS;
+                float3 y_axis : Y_AXIS;
+                float is_ellipse : IS_ELLIPSE;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
             struct PixelData {
@@ -70,34 +59,28 @@ Shader "Lereldarion/Portal/ExportConfiguration" {
                 float4 data : DATA;
                 UNITY_VERTEX_OUTPUT_STEREO
             };
-
+            
             void vertex_stage (MeshData input, out PortalData output) {
                 UNITY_SETUP_INSTANCE_ID(input);
                 output.position = mul(unity_ObjectToWorld, float4(input.position, 1)).xyz;
-                output.normal = mul((float3x3) unity_ObjectToWorld, input.normal);
-                output.tangent = mul((float3x3) unity_ObjectToWorld, input.tangent);
-                output.mode = input.uv0.x;
+                output.x_axis = mul((float3x3) unity_ObjectToWorld, input.normal);
+                output.y_axis = mul((float3x3) unity_ObjectToWorld, input.tangent);
+                output.is_ellipse = input.uv0.x;
                 UNITY_TRANSFER_INSTANCE_ID(input, output);
             }
-
+            
             float4 fragment_stage (PixelData pixel) : SV_Target {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(pixel);
                 return pixel.data;
             }
-
+            
             float4 screen_pixel_to_cs(float2 pixel_coord) {
                 float2 screen = _ScreenParams.xy;
                 float2 position_cs = (pixel_coord * 2 - screen + 1) / screen; // +1 = center of pixels
                 if (_ProjectionParams.x < 0) { position_cs.y = -position_cs.y; } // https://docs.unity3d.com/Manual/SL-PlatformDifferences.html
                 return float4(position_cs, UNITY_NEAR_CLIP_VALUE, 1);
             }
-
-            float uint14ToFloat(uint input) {
-                // https://github.com/pema99/shader-knowledge/blob/main/tips-and-tricks.md#encoding-and-decoding-data-in-a-grabpass
-                precise float output = f16tof32((input & 0x00003fff));
-                return output;
-            }
-
+            
             uniform float _Portal_Enabled_0;
             uniform float _Portal_Enabled_1;
             uniform float _Portal_Enabled_2;
@@ -112,49 +95,57 @@ Shader "Lereldarion/Portal/ExportConfiguration" {
             uniform float _Portal_Enabled_11;
             uniform float _Portal_Enabled_12;
             uniform float _Portal_Enabled_13;
-
+            
+            #include "lereldarion_portal.hlsl"
+            
             [maxvertexcount(4)]
             void geometry_stage(point PortalData input[1], uint primitive_id : SV_PrimitiveID, inout PointStream<PixelData> stream) {
                 UNITY_SETUP_INSTANCE_ID(input[0]);
-
+                
                 PixelData output;
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
-
+                
                 if(primitive_id == 0) {
                     // System control pixel
+                    LPortal::System system;
+                    system.mask = 0;
+                    system.mask |= _Portal_Enabled_0 ? (0x1 << 0) : 0;
+                    system.mask |= _Portal_Enabled_1 ? (0x1 << 1) : 0;
+                    system.mask |= _Portal_Enabled_2 ? (0x1 << 2) : 0;
+                    system.mask |= _Portal_Enabled_3 ? (0x1 << 3) : 0;
+                    system.mask |= _Portal_Enabled_4 ? (0x1 << 4) : 0;
+                    system.mask |= _Portal_Enabled_5 ? (0x1 << 5) : 0;
+                    system.mask |= _Portal_Enabled_6 ? (0x1 << 6) : 0;
+                    system.mask |= _Portal_Enabled_7 ? (0x1 << 7) : 0;
+                    system.mask |= _Portal_Enabled_8 ? (0x1 << 8) : 0;
+                    system.mask |= _Portal_Enabled_9 ? (0x1 << 9) : 0;
+                    system.mask |= _Portal_Enabled_10 ? (0x1 << 10) : 0;
+                    system.mask |= _Portal_Enabled_11 ? (0x1 << 11) : 0;
+                    system.mask |= _Portal_Enabled_12 ? (0x1 << 12) : 0;
+                    system.mask |= _Portal_Enabled_13 ? (0x1 << 13) : 0;
+                    
                     output.position = screen_pixel_to_cs(float2(0, 0));
-                    uint portal_mask = 0;
-                    portal_mask |= _Portal_Enabled_0 ? (0x1 << 0) : 0;
-                    portal_mask |= _Portal_Enabled_1 ? (0x1 << 1) : 0;
-                    portal_mask |= _Portal_Enabled_2 ? (0x1 << 2) : 0;
-                    portal_mask |= _Portal_Enabled_3 ? (0x1 << 3) : 0;
-                    portal_mask |= _Portal_Enabled_4 ? (0x1 << 4) : 0;
-                    portal_mask |= _Portal_Enabled_5 ? (0x1 << 5) : 0;
-                    portal_mask |= _Portal_Enabled_6 ? (0x1 << 6) : 0;
-                    portal_mask |= _Portal_Enabled_7 ? (0x1 << 7) : 0;
-                    portal_mask |= _Portal_Enabled_8 ? (0x1 << 8) : 0;
-                    portal_mask |= _Portal_Enabled_9 ? (0x1 << 9) : 0;
-                    portal_mask |= _Portal_Enabled_10 ? (0x1 << 10) : 0;
-                    portal_mask |= _Portal_Enabled_11 ? (0x1 << 11) : 0;
-                    portal_mask |= _Portal_Enabled_12 ? (0x1 << 12) : 0;
-                    portal_mask |= _Portal_Enabled_13 ? (0x1 << 13) : 0;
-                    output.data = float4(UNITY_PI, uint14ToFloat(portal_mask), 0, 0);
+                    output.data = system.encode();
                     stream.Append(output);
                 }
 
                 // Portal pixels. Always rendered, receivers should use the control mask to ignore.
-                uint3 position_fp = uint3(int3(input[0].position / world_position_precision) + int(0x1 << (world_position_bits - 1)));
+                LPortal::Portal portal;
+                portal.position = input[0].position;
+                portal.x_axis = input[0].x_axis;
+                portal.y_axis = input[0].y_axis;
+                portal.is_ellipse = input[0].is_ellipse > 0;
+                float4 pixels[3];
+                portal.encode(pixels);
                 
                 output.position = screen_pixel_to_cs(float2(1 + 3 * primitive_id, 0));
-                output.data = float4(uint14ToFloat(position_fp.x >> 14), uint14ToFloat(position_fp.x), uint14ToFloat(position_fp.y >> 14), uint14ToFloat(position_fp.y));
+                output.data = pixels[0];
                 stream.Append(output);
-                
                 output.position = screen_pixel_to_cs(float2(2 + 3 * primitive_id, 0));
-                output.data = float4(input[0].normal, uint14ToFloat(position_fp.z >> 14));
+                output.data = pixels[1];
                 stream.Append(output);
-                
                 output.position = screen_pixel_to_cs(float2(3 + 3 * primitive_id, 0));
-                output.data = float4(input[0].tangent, uint14ToFloat(position_fp.z));
+                output.data = pixels[2];
                 stream.Append(output);
             }
             ENDCG

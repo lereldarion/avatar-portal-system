@@ -38,8 +38,36 @@ namespace LPortal {
         
         void encode(out float4 pixels[3]);
         static Portal decode(float4 pixels[3]);
+
+        bool segment_intersect(float3 origin, float3 end);
     };
     
+    ///////////////////////////////////////////////////////////////////////////
+
+    bool Portal::segment_intersect(float3 origin, float3 end) {
+        // Note that we do not have to normalize normal, ray, or x/y axis at all.
+        float3 normal = cross(x_axis, y_axis);
+        float3 ray = end - origin;
+        // portal plane equation dot(p - position, normal) = 0
+        // ray line p(t) = origin + ray * t
+        float t = dot(position - origin, normal) / dot(ray, normal);
+        // t in [0, 1] <=> intersect point between [origin, end].
+        if(!all(t == saturate(t))) { return false; }
+        float3 intersect = origin + ray * t;
+        // Test if we are within the portal shape
+        float3 v = intersect - position;
+        float2 axis_projections = float2(dot(x_axis, v), dot(y_axis, v));
+        float2 axis_length_sq = float2(dot(x_axis, x_axis), dot(y_axis, y_axis));
+        if(is_ellipse) {
+            float2 coords = axis_projections / axis_length_sq; // [-1, 1]
+            return dot(coords, coords) <= 1;
+        } else /* quad */ {
+            return all(abs(axis_projections) <= axis_length_sq);
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+
     // https://github.com/pema99/shader-knowledge/blob/main/tips-and-tricks.md#encoding-and-decoding-data-in-a-grabpass
     uint f16_to_u14(precise float input) { return f32tof16(input) & 0x00003fff; }
     uint3 f16_to_u14(precise float3 input) { return f32tof16(input) & 0x00003fff; }
@@ -65,6 +93,11 @@ namespace LPortal {
         uint3 unsigned_fp_pos = uint3(signed_fp_pos + int(0x1 << (world_position_bits - 1)));
         unsigned_fp_pos &= (0x1 << world_position_bits) - 1; // Mask to world_position_bits, unlikely to trigger
 
+        // Use one of the unused bits to fit is_ellipse
+        if(is_ellipse) {
+            unsigned_fp_pos[0] ^= 0x1 << world_position_bits;
+        }
+
         float3 upper_bits = u14_to_f16(unsigned_fp_pos >> 14);
         float3 lower_bits = u14_to_f16(unsigned_fp_pos);
 
@@ -77,12 +110,15 @@ namespace LPortal {
 
         float3 lower_bits = float3(pixels[0][3], pixels[1][3], pixels[2][3]);
         uint3 unsigned_fp_pos = (f16_to_u14(pixels[0].xyz) << 14) | f16_to_u14(lower_bits);
+        
+        p.is_ellipse = unsigned_fp_pos[0] & 0x1 << world_position_bits;
+        
+        unsigned_fp_pos &= (0x1 << world_position_bits) - 1; // Sanitize bits
         int3 signed_fp_pos = int3(unsigned_fp_pos) - int(0x1 << (world_position_bits - 1));
         p.position = signed_fp_pos * world_position_precision;
 
         p.x_axis = pixels[1].xyz;
         p.y_axis = pixels[2].xyz;
-        p.is_ellipse = false;
         return p;
     }
 }

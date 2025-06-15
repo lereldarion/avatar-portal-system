@@ -35,6 +35,8 @@ namespace LPortal {
         float3 x_axis;
         float3 y_axis;
         bool is_ellipse; // false = quad, true = ellipse TODO
+
+        float3 normal; // Only when decoded
         
         void encode(out float4 pixels[3]);
         static Portal decode(float4 pixels[3]);
@@ -46,7 +48,6 @@ namespace LPortal {
 
     bool Portal::segment_intersect(float3 origin, float3 end) {
         // Note that we do not have to normalize normal, ray, or x/y axis at all.
-        float3 normal = cross(x_axis, y_axis);
         float3 ray = end - origin;
         // portal plane equation dot(p - position, normal) = 0
         // ray line p(t) = origin + ray * t
@@ -119,6 +120,8 @@ namespace LPortal {
 
         p.x_axis = pixels[1].xyz;
         p.y_axis = pixels[2].xyz;
+
+        p.normal = cross(p.x_axis, p.y_axis);
         return p;
     }
 }

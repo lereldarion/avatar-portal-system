@@ -19,7 +19,6 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
             #pragma vertex vertex_stage
             #pragma geometry geometry_stage
             #pragma fragment fragment_stage
-
             
             struct MeshData {
                 UNITY_VERTEX_INPUT_INSTANCE_ID
@@ -50,15 +49,6 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
                     return drawer;
                 }
                 
-                void init_cs(inout LineStream<LinePoint> stream, float4 position_cs) {
-                    output.position = position_cs;
-                    stream.RestartStrip();
-                    stream.Append(output);
-                }
-                void init_ws(inout LineStream<LinePoint> stream, float3 position_ws) {
-                    init_cs(stream, UnityWorldToClipPos(position_ws));
-                }
-                
                 void solid_cs(inout LineStream<LinePoint> stream, float4 position_cs) {
                     output.position = position_cs;
                     stream.Append(output);
@@ -78,7 +68,7 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
             uniform Texture2D<float4> _Lereldarion_Portal_Configuration;
             #include "lereldarion_portal.hlsl"
             
-            [maxvertexcount(5 * 14)]
+            [maxvertexcount(9 * 14)]
             void geometry_stage(point MeshData input[1], uint primitive_id : SV_PrimitiveID, inout LineStream<LinePoint> stream) {
                 UNITY_SETUP_INSTANCE_ID(input[0]);
 
@@ -98,11 +88,20 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
                     LPortal::Portal p = LPortal::Portal::decode(pixels);
 
                     LineDrawer drawer = LineDrawer::init(hue_shift_yiq(half3(1, 0, 0), index / 14.0 * UNITY_TWO_PI));
-                    drawer.init_ws(stream,  p.position - p.x_axis - p.y_axis);
-                    drawer.solid_ws(stream, p.position + p.x_axis - p.y_axis);
-                    drawer.solid_ws(stream, p.position + p.x_axis + p.y_axis);
-                    drawer.solid_ws(stream, p.position - p.x_axis + p.y_axis);
-                    drawer.solid_ws(stream, p.position - p.x_axis - p.y_axis);
+                    stream.RestartStrip();
+                    if(!p.is_ellipse) {
+                        drawer.solid_ws(stream, p.position - p.x_axis - p.y_axis);
+                        drawer.solid_ws(stream, p.position + p.x_axis - p.y_axis);
+                        drawer.solid_ws(stream, p.position + p.x_axis + p.y_axis);
+                        drawer.solid_ws(stream, p.position - p.x_axis + p.y_axis);
+                        drawer.solid_ws(stream, p.position - p.x_axis - p.y_axis);
+                    } else {
+                        for(int i = 0; i < 9; i += 1) {
+                            float2 r;
+                            sincos(i/8. * UNITY_TWO_PI, r.x, r.y);
+                            drawer.solid_ws(stream, p.position + r.x * p.x_axis + r.y * p.y_axis);
+                        }
+                    }
                 }
             }
             ENDCG

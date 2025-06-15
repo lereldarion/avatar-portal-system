@@ -7,7 +7,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Lereldarion_Portal_DebugIntersection
+  m_Name: Lereldarion_Portal_DebugItem
   m_Shader: {fileID: 4800000, guid: 2129d61674d9c464bb4e7e13dbd171fd, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
@@ -23,8 +23,11 @@ Material:
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs: []
-    m_Ints: []
-    m_Floats: []
+    m_Ints:
+    - _Item_Portal_State: 0
+    - _Portal_StencilBit: 128
+    m_Floats:
+    - _Camera_In_Portal: 0
     m_Colors:
     - _Color: {r: 1, g: 1, b: 1, a: 0}
   m_BuildTextureStacks: []

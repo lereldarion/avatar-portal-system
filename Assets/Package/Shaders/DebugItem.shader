@@ -1,7 +1,12 @@
 
-Shader "Lereldarion/Portal/DebugIntersection" {
+Shader "Lereldarion/Portal/DebugItem" {
     Properties {
         _Color("Color", Color) = (1, 1, 1, 0)
+
+        [Header(Portal)]
+        [ToggleUI] _Camera_In_Portal("Camera is in portal space", Float) = 0
+        _Item_Portal_State("Item portal state : 0=w,1=p,2+n=transiting_fwd,-2-n=transiting_back)", Integer) = 0
+        _Portal_StencilBit("Portal Stencil bit", Integer) = 128
     }
     SubShader {
         Tags {
@@ -11,8 +16,6 @@ Shader "Lereldarion/Portal/DebugIntersection" {
         }
 
         Pass {
-            Name "Debug Intersection"
-
             CGPROGRAM
             #pragma target 5.0
             #pragma multi_compile_instancing
@@ -21,7 +24,6 @@ Shader "Lereldarion/Portal/DebugIntersection" {
 
             #pragma vertex vertex_stage
             #pragma fragment fragment_stage
-
             
             struct MeshData {
                 float3 position : POSITION;
@@ -43,6 +45,9 @@ Shader "Lereldarion/Portal/DebugIntersection" {
             
             #include "lereldarion_portal.hlsl"
             uniform Texture2D<float4> _Lereldarion_Portal_Configuration;
+            uniform float _Camera_In_Portal;
+            uniform int _Item_Portal_State;
+            uniform uint _Portal_StencilBit;
 
             uniform half4 _Color;
 
@@ -52,10 +57,29 @@ Shader "Lereldarion/Portal/DebugIntersection" {
                 // Just test if any portal is here
                 LPortal::System system = LPortal::System::decode(_Lereldarion_Portal_Configuration[uint2(0, 0)]);
 
-                bool has_intersect = false;
+                bool portal_parity = _Camera_In_Portal;
+                bool in_portal_space = false;
+
+                uint transiting_portal_id = 1000; // Not tested
+                float transiting_direction = 1;
+
+                if(_Item_Portal_State == 0) {
+                    // World, do nothing
+                } else if(_Item_Portal_State == 1) {
+                    // Portal
+                    portal_parity = !portal_parity;
+                    in_portal_space = true;
+                } else {
+                    if (_Item_Portal_State < 0) {
+                        transiting_direction = -1;
+                        transiting_portal_id = 2 - _Item_Portal_State;
+                    } else {
+                        transiting_portal_id = _Item_Portal_State - 2;
+                    }
+                }
 
                 [loop]
-                while(system.has_portal() && !has_intersect) {
+                while(system.has_portal()) {
                     uint index = system.next_portal();
 
                     float4 pixels[3] = {
@@ -65,10 +89,19 @@ Shader "Lereldarion/Portal/DebugIntersection" {
                     };
                     LPortal::Portal portal = LPortal::Portal::decode(pixels);
 
-                    has_intersect = portal.segment_intersect(_WorldSpaceCameraPos, input.world_position);
+                    if(portal.segment_intersect(_WorldSpaceCameraPos, input.world_position)) {
+                        portal_parity = !portal_parity;
+                    }
+
+                    if(index == transiting_portal_id) {
+                        if(dot(input.world_position - portal.position, portal.normal) * transiting_direction >= 0) {
+                            portal_parity = !portal_parity;
+                            in_portal_space = true;
+                        }
+                    }
                 }
 
-                if(has_intersect) { discard; }
+                if(portal_parity) { discard; }
                 
                 return _Color;
             }

@@ -18,17 +18,10 @@ namespace LP {
     // Range of 67km for millimeter precision.
 
     struct System {
-        uint mask; // Enabled portal ids
+        uint portal_count;
         
         float4 encode();
         static System decode(float4 pixel);
-
-        bool has_portal() { return mask != 0; }
-        uint next_portal() {
-            uint index = firstbitlow(mask);
-            mask ^= 0x1 << index; // Mark as seen
-            return index;
-        }
     };
     
     struct Portal {
@@ -88,14 +81,14 @@ namespace LP {
     precise float3 u14_to_f16(uint3 input) { return f16tof32(input & 0x00003fff); }
     
     float4 System::encode() {
-        return float4(sentinel, u14_to_f16(mask), 0, 0);
+        return float4(sentinel, u14_to_f16(portal_count), 0, 0);
     }
     static System System::decode(float4 pixel) {
         System system;
-        system.mask = 0x0;
-        // If sentinel is wrong, just return system with empty portal mask
+        system.portal_count = 0;
+        // If sentinel is wrong, just return system with no portals
         if (abs(pixel[0] - sentinel) < 0.001) {
-            system.mask = f16_to_u14(pixel[1]);
+            system.portal_count = f16_to_u14(pixel[1]);
         }
         return system;
     }

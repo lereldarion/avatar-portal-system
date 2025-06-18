@@ -6,7 +6,6 @@ Shader "Lereldarion/Portal/DebugItem" {
         [Header(Portal)]
         [ToggleUI] _Camera_In_Portal("Camera is in portal space", Float) = 0
         _Item_Portal_State("Item portal state : 0=w,1=p,2+n=transiting_fwd,-2-n=transiting_back)", Integer) = 0
-        _Portal_StencilBit("Portal Stencil bit", Integer) = 128
     }
     SubShader {
         Tags {
@@ -43,11 +42,10 @@ Shader "Lereldarion/Portal/DebugItem" {
                 output.position = UnityWorldToClipPos(output.world_position);
             }
             
-            #include "lereldarion_portal.hlsl"
+            #include "portal_grabpass.hlsl"
             uniform Texture2D<float4> _Lereldarion_Portal_System_GrabPass;
             uniform float _Camera_In_Portal;
             uniform int _Item_Portal_State;
-            uniform uint _Portal_StencilBit;
 
             uniform half4 _Color;
 
@@ -55,7 +53,7 @@ Shader "Lereldarion/Portal/DebugItem" {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
 
                 // Just test if any portal is here
-                LPortal::System system = LPortal::System::decode(_Lereldarion_Portal_System_GrabPass[uint2(0, 0)]);
+                LP::System system = LP::System::decode(_Lereldarion_Portal_System_GrabPass[uint2(0, 0)]);
 
                 bool portal_parity = _Camera_In_Portal;
                 bool in_portal_space = false;
@@ -79,15 +77,13 @@ Shader "Lereldarion/Portal/DebugItem" {
                 }
 
                 [loop]
-                while(system.has_portal()) {
-                    uint index = system.next_portal();
-
+                for(uint index = 0; index < system.portal_count; index += 1) {
                     float4 pixels[3] = {
                         _Lereldarion_Portal_System_GrabPass[uint2(1 + 3 * index, 0)],
                         _Lereldarion_Portal_System_GrabPass[uint2(2 + 3 * index, 0)],
                         _Lereldarion_Portal_System_GrabPass[uint2(3 + 3 * index, 0)]
                     };
-                    LPortal::Portal portal = LPortal::Portal::decode(pixels);
+                    LP::Portal portal = LP::Portal::decode(pixels);
 
                     if(portal.segment_intersect(_WorldSpaceCameraPos, input.world_position)) {
                         portal_parity = !portal_parity;

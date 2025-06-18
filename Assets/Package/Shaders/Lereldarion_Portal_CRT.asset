@@ -39,17 +39,17 @@ CustomRenderTexture:
   m_VolumeDepth: 1
   m_ShadowSamplingMode: 2
   m_Material: {fileID: 0}
-  m_InitSource: 1
+  m_InitSource: 0
   m_InitMaterial: {fileID: 0}
-  m_InitColor: {r: 1, g: 1, b: 1, a: 1}
+  m_InitColor: {r: 0, g: 0, b: 0, a: 0}
   m_InitTexture: {fileID: 0}
   m_UpdateMode: 1
   m_InitializationMode: 0
-  m_UpdateZoneSpace: 1
-  m_CurrentUpdateZoneSpace: 1
+  m_UpdateZoneSpace: 0
+  m_CurrentUpdateZoneSpace: 0
   m_UpdateZones:
-  - updateZoneCenter: {x: 128, y: 128, z: 0.5}
-    updateZoneSize: {x: 256, y: 256, z: 1}
+  - updateZoneCenter: {x: 0.5, y: 0.5, z: 0.5}
+    updateZoneSize: {x: 1, y: 1, z: 1}
     rotation: 0
     passIndex: -1
     needSwap: 0

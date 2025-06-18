@@ -77,9 +77,7 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
                 LP::System system = LP::System::decode(_Lereldarion_Portal_System_GrabPass[uint2(0, 0)]);
 
                 [loop]
-                while(system.has_portal()) {
-                    uint index = system.next_portal();
-
+                for(uint index = 0; index < system.portal_count; index += 1) {
                     float4 pixels[3] = {
                         _Lereldarion_Portal_System_GrabPass[uint2(1 + 3 * index, 0)],
                         _Lereldarion_Portal_System_GrabPass[uint2(2 + 3 * index, 0)],

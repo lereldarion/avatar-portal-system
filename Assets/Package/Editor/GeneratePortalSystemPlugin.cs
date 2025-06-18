@@ -72,8 +72,9 @@ namespace Lereldarion.Portal
         {
             /// <summary>For points that force mesh bounds</summary>
             Ignored = 0,
-            QuadPortal = 1,
-            EllipsePortal = 2,
+            System = 1,
+            QuadPortal = 2,
+            EllipsePortal = 3,
         }
 
         /// <summary>
@@ -91,6 +92,7 @@ namespace Lereldarion.Portal
 
             SetupBounds(context);
             foreach (var portal in root.GetComponentsInChildren<QuadPortal>(true)) { SetupQuadPortal(portal, context); }
+            SetupSystemVertex(context); // Last, to have an accurate entity count.
 
             mesh.vertices = vertices.Select(vertex => root.InverseTransformPoint(vertex.transform.position)).ToArray();
             mesh.SetNormals(vertices.Select(vertex => root.InverseTransformVector(vertex.transform.TransformVector(vertex.normal))).ToArray());
@@ -134,6 +136,19 @@ namespace Lereldarion.Portal
 
             private int id = 0;
             public int UniqueId() { return id++; }
+        }
+
+        private void SetupSystemVertex(Context context)
+        {
+            // Provide total portal count to grabpass and then CRT
+            // Other data is unused
+            context.Vertices.Add(new SystemMeshVertex
+            {
+                transform = context.System.transform,
+                normal = new Vector3(0, 0, 0),
+                tangent = new Vector3(0, 0, 0),
+                uv0 = new Vector2((float) VertexType.System, (float) context.PortalCount),
+            });
         }
 
         /// <summary>

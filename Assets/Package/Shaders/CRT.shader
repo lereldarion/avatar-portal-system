@@ -1,21 +1,17 @@
-// Export System configuration to a grabpass.
 
-Shader "Lereldarion/Portal/SystemGrabPassExport" {
+Shader "Lereldarion/Portal/CRT" {
     Properties {
-        // TODO force state change from menu for explicit synchro.
-        // [ToggleUI] _Portal_Force_State("Force state TODO", Float) = 0
     }
     SubShader {
         Tags {
-            "Queue" = "Geometry-765"
-            "VRCFallback" = "Hidden"
             "PreviewType" = "Plane"
         }
 
+        ZTest Always
+        ZWrite Off
+
         Pass {
             Name "Encode"
-            ZTest Always
-            ZWrite Off
 
             CGPROGRAM
             #pragma target 5.0
@@ -67,15 +63,7 @@ Shader "Lereldarion/Portal/SystemGrabPassExport" {
                 if (_ProjectionParams.x < 0) { position_cs.y = -position_cs.y; } // https://docs.unity3d.com/Manual/SL-PlatformDifferences.html
                 return float4(position_cs, UNITY_NEAR_CLIP_VALUE, 1);
             }
-
-            // VRChat camera pos variables contain positions independently of the camera that is rendering.
-            // Thus use these to export camera positions to grabpass and then run CRT animator logic for camera portal states.
-            // TODO export
-            uniform float3 _VRChatScreenCameraPos;
-            uniform float3 _VRChatPhotoCameraPos;
-            
-            #include "portal_grabpass.hlsl"
-            
+                        
             [maxvertexcount(6)]
             void geometry_stage(point WorldMeshData input_array[1], uint primitive_id : SV_PrimitiveID, inout PointStream<PixelData> stream) {
                 WorldMeshData input = input_array[0];
@@ -83,49 +71,9 @@ Shader "Lereldarion/Portal/SystemGrabPassExport" {
                 
                 PixelData output;
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
-                
-                int vertex_type = input.uv0.x;
-                switch(vertex_type) {
-                    case 1: {
-                        // System control pixel.
-                        LP::System system;
-                        system.portal_count = input.uv0.y;                  
-                        output.position = screen_pixel_to_cs(float2(0, 0));
-                        output.data = system.encode();
-                        stream.Append(output);
-                        break;
-                    }
-                    case 2: case 3: {
-                        // Portal pixels. Always rendered, receivers should use the control mask to ignore.
-                        LP::Portal portal;
-                        portal.position = input.position;
-                        portal.x_axis = input.normal;
-                        portal.y_axis = input.tangent;
-                        portal.is_ellipse = vertex_type == 3;
-                        float4 pixels[3];
-                        portal.encode(pixels);
-                        
-                        float portal_id = input.uv0.y;
-                        output.position = screen_pixel_to_cs(float2(1 + 3 * portal_id, 0));
-                        output.data = pixels[0];
-                        stream.Append(output);
-                        output.position = screen_pixel_to_cs(float2(2 + 3 * portal_id, 0));
-                        output.data = pixels[1];
-                        stream.Append(output);
-                        output.position = screen_pixel_to_cs(float2(3 + 3 * portal_id, 0));
-                        output.data = pixels[2];
-                        stream.Append(output);
-                        break;
-                    }
-                    default: break;
-                }
             }
             ENDCG
         }
 
-        GrabPass {
-            "_Lereldarion_Portal_System_GrabPass"
-            Name "Export"
-        }
     }
 }

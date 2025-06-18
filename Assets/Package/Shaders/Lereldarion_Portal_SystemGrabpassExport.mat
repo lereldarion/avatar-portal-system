@@ -7,7 +7,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Lereldarion_Portal_ExportConfiguration
+  m_Name: Lereldarion_Portal_SystemGrabPassExport
   m_Shader: {fileID: 4800000, guid: 552aa901e32399e4591164655140b41f, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0

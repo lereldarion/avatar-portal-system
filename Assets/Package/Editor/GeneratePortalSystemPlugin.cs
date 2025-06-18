@@ -51,20 +51,30 @@ namespace Lereldarion.Portal
         }
 
         /// <summary>
-        /// We will generate one point per portal.
-        /// Gather data from portal components here.
+        /// System information is encoded into points that will be skinned to runtime locations.
+        /// uv0.x is the type of object.
+        /// 
+        /// Portal : encode XY direction and lengths into normal / tangent.
         /// </summary>
-        private class PortalEncoding
+        private class SystemMeshVertex
         {
-            /// <summary>
-            /// Position, bone assignment of portal point.
-            /// </summary>
+            /// <summary>Position, bone assignment.</summary>
             public Transform transform;
-            // For now only Quad portal, encode XY direction and lengths into normal / tangent
             public Vector3 normal;
             public Vector3 tangent;
+            /// <summary>
+            /// x is the type of object. See VertexType.
+            /// </summary>
             public Vector2 uv0;
         };
+
+        private enum VertexType
+        {
+            /// <summary>For points that force mesh bounds</summary>
+            Ignored = 0,
+            QuadPortal = 1,
+            EllipsePortal = 2,
+        }
 
         /// <summary>
         /// Create portal mesh renderer, animator layers, gameobjects from descriptor components.
@@ -76,23 +86,24 @@ namespace Lereldarion.Portal
         {
             Transform root = system.transform;
             Mesh mesh = new Mesh();
-            var portal_encodings = new List<PortalEncoding>();
-            var context = new Context { Animator = animator, System = system, portal_encodings = portal_encodings };
+            var vertices = new List<SystemMeshVertex>();
+            var context = new Context { Animator = animator, System = system, Vertices = vertices };
 
+            SetupBounds(context);
             foreach (var portal in root.GetComponentsInChildren<QuadPortal>(true)) { SetupQuadPortal(portal, context); }
 
-            mesh.vertices = portal_encodings.Select(portal => root.InverseTransformPoint(portal.transform.position)).ToArray();
-            mesh.SetNormals(portal_encodings.Select(portal => root.InverseTransformVector(portal.transform.TransformVector(portal.normal))).ToArray());
-            mesh.SetTangents(portal_encodings.Select(portal =>
+            mesh.vertices = vertices.Select(vertex => root.InverseTransformPoint(vertex.transform.position)).ToArray();
+            mesh.SetNormals(vertices.Select(vertex => root.InverseTransformVector(vertex.transform.TransformVector(vertex.normal))).ToArray());
+            mesh.SetTangents(vertices.Select(vertex =>
             {
-                Vector3 v = root.InverseTransformVector(portal.transform.TransformVector(portal.tangent));
+                Vector3 v = root.InverseTransformVector(vertex.transform.TransformVector(vertex.tangent));
                 return new Vector4(v.x, v.y, v.z, 1f);
             }).ToArray());
-            mesh.SetUVs(0, portal_encodings.Select(portal => portal.uv0).ToArray());
-            mesh.SetIndices(Enumerable.Range(0, portal_encodings.Count()).ToArray(), MeshTopology.Points, 0);
+            mesh.SetUVs(0, vertices.Select(vertex => vertex.uv0).ToArray());
+            mesh.SetIndices(Enumerable.Range(0, vertices.Count()).ToArray(), MeshTopology.Points, 0);
 
-            Transform[] bones = portal_encodings.Select(vertex => vertex.transform).ToArray();
-            mesh.boneWeights = Enumerable.Range(0, portal_encodings.Count()).Select(i =>
+            Transform[] bones = vertices.Select(vertex => vertex.transform).ToArray();
+            mesh.boneWeights = Enumerable.Range(0, vertices.Count()).Select(i =>
             {
                 var bw = new BoneWeight();
                 bw.boneIndex0 = i;
@@ -114,7 +125,8 @@ namespace Lereldarion.Portal
         {
             public AnimatorContext Animator;
             public PortalSystem System;
-            public List<PortalEncoding> portal_encodings;
+            public List<SystemMeshVertex> Vertices;
+            public int PortalCount = 0;
         }
         private class AnimatorContext
         {
@@ -125,19 +137,30 @@ namespace Lereldarion.Portal
         }
 
         /// <summary>
+        /// Creates vertices and animator used to setup occlusion bounds
+        /// </summary>
+        /// <param name="context">Data of the current portal system being built</param>
+        private void SetupBounds(Context context)
+        {
+            // TODO create gameobject + vertex bound to it. Add animator init to check update on skinned mesh and move bounds.
+        }
+
+        /// <summary>
         /// Add a portal to the system.
         /// </summary>
         /// <param name="portal">Portal descriptor</param>
         /// <param name="context">Data of the current portal system being built</param>
-        /// <exception cref="System.ArgumentException"></exception>
         private void SetupQuadPortal(QuadPortal portal, Context context)
         {
-            context.portal_encodings.Add(new PortalEncoding
+            VertexType vertex_type = portal.Shape == QuadPortal.ShapeType.Rectangle ? VertexType.QuadPortal : VertexType.EllipsePortal;
+            int portal_id = context.PortalCount; context.PortalCount += 1;
+
+            context.Vertices.Add(new SystemMeshVertex
             {
                 transform = portal.transform,
                 normal = new Vector3(portal.Size.x, 0, 0),
                 tangent = new Vector3(0, portal.Size.y, 0),
-                uv0 = new Vector2(portal.Shape == QuadPortal.ShapeType.Rectangle ? 0f : 1f, 0f),
+                uv0 = new Vector2((float)vertex_type, (float)portal_id),
             });
 
             Object.DestroyImmediate(portal); // Remove items before upload

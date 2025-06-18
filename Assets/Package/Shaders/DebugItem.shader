@@ -44,7 +44,7 @@ Shader "Lereldarion/Portal/DebugItem" {
             }
             
             #include "lereldarion_portal.hlsl"
-            uniform Texture2D<float4> _Lereldarion_Portal_Configuration;
+            uniform Texture2D<float4> _Lereldarion_Portal_System_GrabPass;
             uniform float _Camera_In_Portal;
             uniform int _Item_Portal_State;
             uniform uint _Portal_StencilBit;
@@ -55,7 +55,7 @@ Shader "Lereldarion/Portal/DebugItem" {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
 
                 // Just test if any portal is here
-                LPortal::System system = LPortal::System::decode(_Lereldarion_Portal_Configuration[uint2(0, 0)]);
+                LPortal::System system = LPortal::System::decode(_Lereldarion_Portal_System_GrabPass[uint2(0, 0)]);
 
                 bool portal_parity = _Camera_In_Portal;
                 bool in_portal_space = false;
@@ -83,9 +83,9 @@ Shader "Lereldarion/Portal/DebugItem" {
                     uint index = system.next_portal();
 
                     float4 pixels[3] = {
-                        _Lereldarion_Portal_Configuration[uint2(1 + 3 * index, 0)],
-                        _Lereldarion_Portal_Configuration[uint2(2 + 3 * index, 0)],
-                        _Lereldarion_Portal_Configuration[uint2(3 + 3 * index, 0)]
+                        _Lereldarion_Portal_System_GrabPass[uint2(1 + 3 * index, 0)],
+                        _Lereldarion_Portal_System_GrabPass[uint2(2 + 3 * index, 0)],
+                        _Lereldarion_Portal_System_GrabPass[uint2(3 + 3 * index, 0)]
                     };
                     LPortal::Portal portal = LPortal::Portal::decode(pixels);
 

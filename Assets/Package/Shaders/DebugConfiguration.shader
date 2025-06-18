@@ -65,8 +65,8 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
                 return col * cosAngle + cross(k, col) * sinAngle + k * dot(k, col) * (1.0 - cosAngle);
             }
             
-            uniform Texture2D<float4> _Lereldarion_Portal_Configuration;
-            #include "lereldarion_portal.hlsl"
+            uniform Texture2D<float4> _Lereldarion_Portal_System_GrabPass;
+            #include "portal_grabpass.hlsl"
             
             [maxvertexcount(9 * 14)]
             void geometry_stage(point MeshData input[1], uint primitive_id : SV_PrimitiveID, inout LineStream<LinePoint> stream) {
@@ -74,18 +74,18 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
 
                 if(primitive_id > 0) { return; }
 
-                LPortal::System system = LPortal::System::decode(_Lereldarion_Portal_Configuration[uint2(0, 0)]);
+                LP::System system = LP::System::decode(_Lereldarion_Portal_System_GrabPass[uint2(0, 0)]);
 
                 [loop]
                 while(system.has_portal()) {
                     uint index = system.next_portal();
 
                     float4 pixels[3] = {
-                        _Lereldarion_Portal_Configuration[uint2(1 + 3 * index, 0)],
-                        _Lereldarion_Portal_Configuration[uint2(2 + 3 * index, 0)],
-                        _Lereldarion_Portal_Configuration[uint2(3 + 3 * index, 0)]
+                        _Lereldarion_Portal_System_GrabPass[uint2(1 + 3 * index, 0)],
+                        _Lereldarion_Portal_System_GrabPass[uint2(2 + 3 * index, 0)],
+                        _Lereldarion_Portal_System_GrabPass[uint2(3 + 3 * index, 0)]
                     };
-                    LPortal::Portal p = LPortal::Portal::decode(pixels);
+                    LP::Portal p = LP::Portal::decode(pixels);
 
                     LineDrawer drawer = LineDrawer::init(hue_shift_yiq(half3(1, 0, 0), index / 14.0 * UNITY_TWO_PI));
                     stream.RestartStrip();

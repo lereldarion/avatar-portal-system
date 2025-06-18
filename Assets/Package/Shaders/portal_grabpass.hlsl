@@ -1,7 +1,8 @@
-#ifndef LERELDARION_PORTAL_H
-#define LERELDARION_PORTAL_H
+#ifndef LERELDARION_PORTAL_GRABPASS_H
+#define LERELDARION_PORTAL_GRABPASS_H
+namespace LP {
+    // Portal system grabpass encoding
 
-namespace LPortal {
     // Encoding :
     // 1 system control pixel at (0, 0) :
     // - R = f16 sentinel value (>1) to check if system is enabled & grabpass is RGBA16_FLOAT and not RGBA8_UNORM.
@@ -136,5 +137,4 @@ namespace LPortal {
         return p;
     }
 }
-
 #endif

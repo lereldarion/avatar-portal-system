@@ -22,6 +22,8 @@ Shader "Lereldarion/Portal/SystemGrabPassExport" {
             #pragma multi_compile_instancing
 
             #include "UnityCG.cginc"
+            
+            #include "portal.hlsl"
 
             #pragma vertex vertex_stage
             #pragma geometry geometry_stage
@@ -60,22 +62,13 @@ Shader "Lereldarion/Portal/SystemGrabPassExport" {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(pixel);
                 return pixel.data;
             }
-            
-            float4 screen_pixel_to_cs(float2 pixel_coord) {
-                float2 screen = _ScreenParams.xy;
-                float2 position_cs = (pixel_coord * 2 - screen + 1) / screen; // +1 = center of pixels
-                if (_ProjectionParams.x < 0) { position_cs.y = -position_cs.y; } // https://docs.unity3d.com/Manual/SL-PlatformDifferences.html
-                return float4(position_cs, UNITY_NEAR_CLIP_VALUE, 1);
-            }
 
             // VRChat camera pos variables contain positions independently of the camera that is rendering.
             // Thus use these to export camera positions to grabpass and then run CRT animator logic for camera portal states.
             // TODO export
             uniform float3 _VRChatScreenCameraPos;
             uniform float3 _VRChatPhotoCameraPos;
-            
-            #include "portal_grabpass.hlsl"
-            
+                        
             [maxvertexcount(6)]
             void geometry_stage(point WorldMeshData input_array[1], uint primitive_id : SV_PrimitiveID, inout PointStream<PixelData> stream) {
                 WorldMeshData input = input_array[0];
@@ -88,33 +81,30 @@ Shader "Lereldarion/Portal/SystemGrabPassExport" {
                 switch(vertex_type) {
                     case 1: {
                         // System control pixel.
-                        LP::System system;
+                        System system;
                         system.portal_count = input.uv0.y;                  
-                        output.position = screen_pixel_to_cs(float2(0, 0));
-                        output.data = system.encode();
+                        output.position = target_pixel_to_cs(uint2(0, 0), _ScreenParams.xy);
+                        output.data = system.encode_grabpass();
                         stream.Append(output);
                         break;
                     }
                     case 2: case 3: {
-                        // Portal pixels. Always rendered, receivers should use the control mask to ignore.
-                        LP::Portal portal;
+                        // Portal pixels. Always rendered, will be sorted
+                        Portal portal;
                         portal.position = input.position;
                         portal.x_axis = input.normal;
                         portal.y_axis = input.tangent;
                         portal.is_ellipse = vertex_type == 3;
-                        float4 pixels[3];
-                        portal.encode(pixels);
-                        
-                        float portal_id = input.uv0.y;
-                        output.position = screen_pixel_to_cs(float2(1 + 3 * portal_id, 0));
-                        output.data = pixels[0];
-                        stream.Append(output);
-                        output.position = screen_pixel_to_cs(float2(2 + 3 * portal_id, 0));
-                        output.data = pixels[1];
-                        stream.Append(output);
-                        output.position = screen_pixel_to_cs(float2(3 + 3 * portal_id, 0));
-                        output.data = pixels[2];
-                        stream.Append(output);
+                        portal.finalize();
+                        uint portal_id = input.uv0.y;
+
+                        float4 pixels[4];
+                        portal.encode_grabpass(pixels);
+                        for(uint i = 0; i < 4; i += 1) {
+                            output.position = target_pixel_to_cs(uint2(1 + i + 4 * portal_id, 0), _ScreenParams.xy);
+                            output.data = pixels[i];
+                            stream.Append(output);
+                        }
                         break;
                     }
                     default: break;

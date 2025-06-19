@@ -22,6 +22,10 @@ Shader "Lereldarion/Portal/DebugItem" {
 
             #include "UnityCG.cginc"
 
+            #include "portal.hlsl"
+
+            uniform Texture2D<uint4> _Portal_CRT;
+
             #pragma vertex vertex_stage
             #pragma fragment fragment_stage
             
@@ -43,9 +47,6 @@ Shader "Lereldarion/Portal/DebugItem" {
                 output.position = UnityWorldToClipPos(output.world_position);
             }
             
-            uniform Texture2D<uint4> _Portal_CRT;
-            #include "portal_crt.hlsl"
-
             uniform float _Camera_In_Portal;
             uniform int _Item_Portal_State;
 
@@ -77,10 +78,10 @@ Shader "Lereldarion/Portal/DebugItem" {
 
                 [loop]
                 for(uint index = 0; index < 32; index += 1) {
-                    PortalPixel0 p0 = PortalPixel0::decode(_Portal_CRT, index);
+                    PortalPixel0 p0 = PortalPixel0::decode_crt(_Portal_CRT, index);
                     if(!p0.is_enabled()) { break; }
                     if(!p0.fast_intersect(_WorldSpaceCameraPos, input.world_position)) { continue; }
-                    Portal portal = Portal::decode(p0, _Portal_CRT, index);
+                    Portal portal = Portal::decode_crt(p0, _Portal_CRT, index);
 
                     if(portal.segment_intersect(_WorldSpaceCameraPos, input.world_position)) {
                         portal_parity = !portal_parity;

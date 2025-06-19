@@ -117,7 +117,7 @@ namespace Lereldarion.Portal
             var renderer = root.gameObject.AddComponent<SkinnedMeshRenderer>();
             renderer.sharedMesh = mesh;
             renderer.bones = bones;
-            renderer.material = system.Material;
+            renderer.material = system.GrabPassExport;
 
             Object.DestroyImmediate(system); // Cleanup components
             return mesh;

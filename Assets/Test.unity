@@ -564,7 +564,7 @@ Transform:
   m_GameObject: {fileID: 196637901}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: 1.072, z: 2.028}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -610,7 +610,7 @@ Transform:
   m_GameObject: {fileID: 273219516}
   serializedVersion: 2
   m_LocalRotation: {x: -0.14264393, y: -0.18136626, z: -0.02659819, w: 0.97265184}
-  m_LocalPosition: {x: 0, y: 0, z: 0.587}
+  m_LocalPosition: {x: -2.179, y: 0.631, z: 2.001}
   m_LocalScale: {x: 0.5, y: 0.5, z: 0.5}
   m_ConstrainProportionsScale: 1
   m_Children: []
@@ -988,7 +988,7 @@ Transform:
   m_GameObject: {fileID: 1975532963}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -1009,7 +1009,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   OcclusionBoxSize: 100
-  Material: {fileID: 2100000, guid: d5341b3e6cdc47947a1e781f126fc90c, type: 2}
+  GrabPassExport: {fileID: 2100000, guid: d5341b3e6cdc47947a1e781f126fc90c, type: 2}
+  SealPortals: {fileID: 0}
 --- !u!1 &2012814117
 GameObject:
   m_ObjectHideFlags: 0

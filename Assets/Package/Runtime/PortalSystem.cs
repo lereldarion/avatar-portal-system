@@ -13,6 +13,7 @@ namespace Lereldarion.Portal
         public float OcclusionBoxSize = 100f;
 
         [Header("Material")]
-        public Material Material;
+        public Material GrabPassExport;
+        public Material SealPortals;
     }
 }

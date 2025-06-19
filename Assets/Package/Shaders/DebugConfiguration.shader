@@ -76,7 +76,7 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
                 return col * cosAngle + cross(k, col) * sinAngle + k * dot(k, col) * (1.0 - cosAngle);
             }
             
-            [maxvertexcount(9 * 14)]
+            [maxvertexcount(128)]
             void geometry_stage(point MeshData input[1], uint primitive_id : SV_PrimitiveID, inout LineStream<LinePoint> stream) {
                 UNITY_SETUP_INSTANCE_ID(input[0]);
 
@@ -114,6 +114,25 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
                         }
                     }
                 }
+
+                #ifdef _PORTAL_DATA_SOURCE_CRT
+                // Cameras
+                for(index = 0; index < 2; index += 1) {
+                    Camera c = Camera::decode_crt(_Portal_CRT, index);
+                    LineDrawer drawer = LineDrawer::init(float3(index == 0, index == 1, c.in_portal));
+
+                    float s = 0.1;
+                    stream.RestartStrip();
+                    drawer.solid_ws(stream, c.position - float3(s, 0, 0));
+                    drawer.solid_ws(stream, c.position + float3(s, 0, 0));
+                    stream.RestartStrip();
+                    drawer.solid_ws(stream, c.position - float3(0, s, 0));
+                    drawer.solid_ws(stream, c.position + float3(0, s, 0));
+                    stream.RestartStrip();
+                    drawer.solid_ws(stream, c.position - float3(0, 0, s));
+                    drawer.solid_ws(stream, c.position + float3(0, 0, s));
+                }
+                #endif
             }
             ENDCG
         }

@@ -4,52 +4,44 @@ Shader "Lereldarion/Portal/CRT" {
     }
     SubShader {
         Tags {
+            "Queue" = "Geometry-100"
             "PreviewType" = "Plane"
         }
 
         ZTest Always
         ZWrite Off
+        Lighting Off
 
         Pass {
-            Name "Encode"
+            // Compact portal positions into 2 f32x4 per portal.
+            // Use the flexcrt strategy (cnlohr) : geometry pass to blit at interesting places
+            // https://github.com/cnlohr/flexcrt/blob/master/Assets/flexcrt_demo/ExampleFlexCRT.shader#L78
+
+            Name "Process Portal configuration"
 
             CGPROGRAM
             #pragma target 5.0
-            #pragma multi_compile_instancing
 
-            #include "UnityCG.cginc"
-
+            #include "UnityCustomRenderTexture.cginc"
+            
             #pragma vertex vertex_stage
             #pragma geometry geometry_stage
             #pragma fragment fragment_stage
             
             struct MeshData {
-                float3 position : POSITION;
-                float3 normal : NORMAL;
-                float3 tangent : TANGENT;
-                float2 uv0 : TEXCOORD0;
-                UNITY_VERTEX_INPUT_INSTANCE_ID
+                uint vertex_id : SV_VertexID;
             };
-            struct WorldMeshData {
-                float3 position : W_POSITION;
-                float3 normal : W_NORMAL;
-                float3 tangent : W_TANGENT;
-                float2 uv0 : UV0;
-                UNITY_VERTEX_INPUT_INSTANCE_ID
+            struct GeometryData {
+                uint batch_id : BATCH_ID;
             };
             struct PixelData {
                 float4 position : SV_POSITION;
                 float4 data : DATA;
-                UNITY_VERTEX_OUTPUT_STEREO
             };
             
-            void vertex_stage (MeshData input, out WorldMeshData output) {
-                UNITY_SETUP_INSTANCE_ID(input);
-                output.position = mul(unity_ObjectToWorld, float4(input.position, 1)).xyz;
-                output.normal = mul((float3x3) unity_ObjectToWorld, input.normal);
-                output.tangent = mul((float3x3) unity_ObjectToWorld, input.tangent);
-                output.uv0 = input.uv0;
-                UNITY_TRANSFER_INSTANCE_ID(input, output);
+            void vertex_stage (MeshData input, out GeometryData output) {
+                // CRT emit a quad per draw call, as 2 separate triangles (6 vertex)
+                output.batch_id = input.vertex_id / 6;
             }
             
             float4 fragment_stage (PixelData pixel) : SV_Target {
@@ -57,20 +49,60 @@ Shader "Lereldarion/Portal/CRT" {
                 return pixel.data;
             }
             
-            float4 screen_pixel_to_cs(float2 pixel_coord) {
-                float2 screen = _ScreenParams.xy;
-                float2 position_cs = (pixel_coord * 2 - screen + 1) / screen; // +1 = center of pixels
-                if (_ProjectionParams.x < 0) { position_cs.y = -position_cs.y; } // https://docs.unity3d.com/Manual/SL-PlatformDifferences.html
-                return float4(position_cs, UNITY_NEAR_CLIP_VALUE, 1);
+            float4 crt_pos_cs(uint2 pos) {
+                float2 crt_size = _CustomRenderTextureInfo.xy;
+                float4 pos_cs = float4((pos * 2 - crt_size + 1 ) / crt_size, UNITY_NEAR_CLIP_VALUE, 1);
+                if (_ProjectionParams.x < 0) { pos_cs.y = -pos_cs.y; } // https://docs.unity3d.com/Manual/SL-PlatformDifferences.html
+                return pos_cs;
             }
+
+            #include "portal_grabpass.hlsl"
+            Texture2D<float4> _Lereldarion_Portal_System_GrabPass;
+            
+            #include "portal_crt.hlsl"
                         
-            [maxvertexcount(6)]
-            void geometry_stage(point WorldMeshData input_array[1], uint primitive_id : SV_PrimitiveID, inout PointStream<PixelData> stream) {
-                WorldMeshData input = input_array[0];
-                UNITY_SETUP_INSTANCE_ID(input);
-                
-                PixelData output;
-                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
+            [maxvertexcount(128)]
+            void geometry_stage(point GeometryData input[1], uint primitive_id : SV_PrimitiveID, inout PointStream<PixelData> stream) {
+                // Compared to flexcrt we only want one thread that will scan all portals, so just get one iteration.
+                if(primitive_id == 0) {
+                    PixelData output;
+                    
+                    LP::System system = LP::System::decode(_Lereldarion_Portal_System_GrabPass[uint2(0, 0)]);
+                    
+                    uint active_portal_count = 0;
+                    uint max_portal_scan_count = min(system.portal_count, 32);
+                    [loop]
+                    for(uint index = 0; index < max_portal_scan_count; index += 1) {
+                        float4 pixels[3] = {
+                            _Lereldarion_Portal_System_GrabPass[uint2(1 + 3 * index, 0)],
+                            _Lereldarion_Portal_System_GrabPass[uint2(2 + 3 * index, 0)],
+                            _Lereldarion_Portal_System_GrabPass[uint2(3 + 3 * index, 0)]
+                        };
+                        LP::Portal p = LP::Portal::decode(pixels);
+
+                        Portal p2;
+                        p2.position = p.position;
+                        p2.x_axis = p.x_axis;
+                        p2.y_axis = p.y_axis;
+                        p2.is_ellipse = p.is_ellipse;
+                        float4 opixels[2];
+                        p2.encode(opixels);
+                        if(opixels[0].w > 0) {
+                            output.position = crt_pos_cs(uint2(active_portal_count, 0));
+                            output.data = opixels[0];
+                            stream.Append(output);
+                            output.position = crt_pos_cs(uint2(active_portal_count, 1));
+                            output.data = opixels[1];
+                            stream.Append(output);
+                            active_portal_count += 1;
+                        }
+                    }
+
+                    // Sentinel pixel with portal of radius 0
+                    output.position = crt_pos_cs(uint2(active_portal_count, 0));
+                    output.data = float4(0, 0, 0, 0);
+                    stream.Append(output);
+                }
             }
             ENDCG
         }

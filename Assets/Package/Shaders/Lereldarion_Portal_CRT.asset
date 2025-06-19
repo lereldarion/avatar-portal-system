@@ -14,7 +14,7 @@ CustomRenderTexture:
   m_DownscaleFallback: 0
   m_IsAlphaChannelOptional: 0
   serializedVersion: 5
-  m_Width: 256
+  m_Width: 32
   m_Height: 4
   m_AntiAliasing: 1
   m_MipCount: -1
@@ -38,21 +38,21 @@ CustomRenderTexture:
   m_Dimension: 2
   m_VolumeDepth: 1
   m_ShadowSamplingMode: 2
-  m_Material: {fileID: 0}
+  m_Material: {fileID: 2100000, guid: 48b34bf042660f2409a125d60f03e142, type: 2}
   m_InitSource: 0
   m_InitMaterial: {fileID: 0}
   m_InitColor: {r: 0, g: 0, b: 0, a: 0}
   m_InitTexture: {fileID: 0}
   m_UpdateMode: 1
-  m_InitializationMode: 0
+  m_InitializationMode: 2
   m_UpdateZoneSpace: 0
   m_CurrentUpdateZoneSpace: 0
   m_UpdateZones:
   - updateZoneCenter: {x: 0.5, y: 0.5, z: 0.5}
     updateZoneSize: {x: 1, y: 1, z: 1}
     rotation: 0
-    passIndex: -1
-    needSwap: 0
+    passIndex: 0
+    needSwap: 1
   m_UpdatePeriod: 0
   m_ShaderPass: 0
   m_CubemapFaceMask: 4294967295

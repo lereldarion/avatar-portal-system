@@ -1,5 +1,9 @@
 
 Shader "Lereldarion/Portal/DebugConfiguration" {
+    Properties {
+        [Enum(GrabPass,0,CRT,1)] _Use_Portal_CRT("Data source", Float) = 0
+        _Portal_CRT("CRT texture", 2D) = ""
+    }
     SubShader {
         Tags {
             "Queue" = "Geometry"
@@ -67,6 +71,10 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
             
             uniform Texture2D<float4> _Lereldarion_Portal_System_GrabPass;
             #include "portal_grabpass.hlsl"
+
+            uniform float _Use_Portal_CRT;
+            uniform Texture2D<float4> _Portal_CRT;
+            #include "portal_crt.hlsl"
             
             [maxvertexcount(9 * 14)]
             void geometry_stage(point MeshData input[1], uint primitive_id : SV_PrimitiveID, inout LineStream<LinePoint> stream) {
@@ -74,30 +82,57 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
 
                 if(primitive_id > 0) { return; }
 
-                LP::System system = LP::System::decode(_Lereldarion_Portal_System_GrabPass[uint2(0, 0)]);
+                if (_Use_Portal_CRT) {
+                    [loop]
+                    for(uint index = 0; index < 32; index += 1) {
+                        PortalPixel0 p0 = PortalPixel0::decode(_Portal_CRT[uint2(index, 0)]);
+                        if(!p0.is_enabled()) { break; }
+                        Portal p = Portal::decode(p0, _Portal_CRT[uint2(index, 1)]);
 
-                [loop]
-                for(uint index = 0; index < system.portal_count; index += 1) {
-                    float4 pixels[3] = {
-                        _Lereldarion_Portal_System_GrabPass[uint2(1 + 3 * index, 0)],
-                        _Lereldarion_Portal_System_GrabPass[uint2(2 + 3 * index, 0)],
-                        _Lereldarion_Portal_System_GrabPass[uint2(3 + 3 * index, 0)]
-                    };
-                    LP::Portal p = LP::Portal::decode(pixels);
+                        LineDrawer drawer = LineDrawer::init(hue_shift_yiq(half3(1, 0, 0), index / 14.0 * UNITY_TWO_PI));
+                        stream.RestartStrip();
+                        if(!p.is_ellipse) {
+                            drawer.solid_ws(stream, p.position - p.x_axis - p.y_axis);
+                            drawer.solid_ws(stream, p.position + p.x_axis - p.y_axis);
+                            drawer.solid_ws(stream, p.position + p.x_axis + p.y_axis);
+                            drawer.solid_ws(stream, p.position - p.x_axis + p.y_axis);
+                            drawer.solid_ws(stream, p.position - p.x_axis - p.y_axis);
+                        } else {
+                            for(int i = 0; i < 9; i += 1) {
+                                float2 r;
+                                sincos(i/8. * UNITY_TWO_PI, r.x, r.y);
+                                drawer.solid_ws(stream, p.position + r.x * p.x_axis + r.y * p.y_axis);
+                            }
+                        }
 
-                    LineDrawer drawer = LineDrawer::init(hue_shift_yiq(half3(1, 0, 0), index / 14.0 * UNITY_TWO_PI));
-                    stream.RestartStrip();
-                    if(!p.is_ellipse) {
-                        drawer.solid_ws(stream, p.position - p.x_axis - p.y_axis);
-                        drawer.solid_ws(stream, p.position + p.x_axis - p.y_axis);
-                        drawer.solid_ws(stream, p.position + p.x_axis + p.y_axis);
-                        drawer.solid_ws(stream, p.position - p.x_axis + p.y_axis);
-                        drawer.solid_ws(stream, p.position - p.x_axis - p.y_axis);
-                    } else {
-                        for(int i = 0; i < 9; i += 1) {
-                            float2 r;
-                            sincos(i/8. * UNITY_TWO_PI, r.x, r.y);
-                            drawer.solid_ws(stream, p.position + r.x * p.x_axis + r.y * p.y_axis);
+                    }
+
+                } else {
+                    LP::System system = LP::System::decode(_Lereldarion_Portal_System_GrabPass[uint2(0, 0)]);
+    
+                    [loop]
+                    for(uint index = 0; index < system.portal_count; index += 1) {
+                        float4 pixels[3] = {
+                            _Lereldarion_Portal_System_GrabPass[uint2(1 + 3 * index, 0)],
+                            _Lereldarion_Portal_System_GrabPass[uint2(2 + 3 * index, 0)],
+                            _Lereldarion_Portal_System_GrabPass[uint2(3 + 3 * index, 0)]
+                        };
+                        LP::Portal p = LP::Portal::decode(pixels);
+    
+                        LineDrawer drawer = LineDrawer::init(hue_shift_yiq(half3(1, 0, 0), index / 14.0 * UNITY_TWO_PI));
+                        stream.RestartStrip();
+                        if(!p.is_ellipse) {
+                            drawer.solid_ws(stream, p.position - p.x_axis - p.y_axis);
+                            drawer.solid_ws(stream, p.position + p.x_axis - p.y_axis);
+                            drawer.solid_ws(stream, p.position + p.x_axis + p.y_axis);
+                            drawer.solid_ws(stream, p.position - p.x_axis + p.y_axis);
+                            drawer.solid_ws(stream, p.position - p.x_axis - p.y_axis);
+                        } else {
+                            for(int i = 0; i < 9; i += 1) {
+                                float2 r;
+                                sincos(i/8. * UNITY_TWO_PI, r.x, r.y);
+                                drawer.solid_ws(stream, p.position + r.x * p.x_axis + r.y * p.y_axis);
+                            }
                         }
                     }
                 }

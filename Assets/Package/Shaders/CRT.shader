@@ -36,7 +36,7 @@ Shader "Lereldarion/Portal/CRT" {
             };
             struct PixelData {
                 float4 position : SV_POSITION;
-                float4 data : DATA;
+                uint4 data : DATA;
             };
             
             void vertex_stage (MeshData input, out GeometryData output) {
@@ -44,7 +44,7 @@ Shader "Lereldarion/Portal/CRT" {
                 output.batch_id = input.vertex_id / 6;
             }
             
-            float4 fragment_stage (PixelData pixel) : SV_Target {
+            uint4 fragment_stage (PixelData pixel) : SV_Target {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(pixel);
                 return pixel.data;
             }
@@ -85,7 +85,7 @@ Shader "Lereldarion/Portal/CRT" {
                         p2.x_axis = p.x_axis;
                         p2.y_axis = p.y_axis;
                         p2.is_ellipse = p.is_ellipse;
-                        float4 opixels[2];
+                        uint4 opixels[2];
                         p2.encode(opixels);
                         if(opixels[0].w > 0) {
                             output.position = crt_pos_cs(uint2(active_portal_count, 0));

@@ -10,11 +10,12 @@ struct PortalPixel0 {
     float3 position;
     float radius_sq;
 
-    bool is_enabled() { return radius_sq > 0.0001; }
-    static PortalPixel0 decode(float4 pixel) {
+    bool is_enabled() { return radius_sq > 0; }
+    static PortalPixel0 decode(uint4 pixel) {
+        float4 pixel_fp = asfloat(pixel);
         PortalPixel0 o;
-        o.position = pixel.xyz;
-        o.radius_sq = pixel.w;
+        o.position = pixel_fp.xyz;
+        o.radius_sq = pixel_fp.w;
         return o;
     }
     bool fast_intersect(float3 origin, float3 end);
@@ -29,8 +30,8 @@ struct Portal {
     // Only when decoded
     float3 normal;
     
-    void encode(out float4 pixels[2]);
-    static Portal decode(PortalPixel0 pixel0, float4 pixel1);
+    void encode(out uint4 pixels[2]);
+    static Portal decode(PortalPixel0 pixel0, uint4 pixel1);
 
     bool segment_intersect(float3 origin, float3 end);
 };
@@ -72,24 +73,22 @@ bool Portal::segment_intersect(float3 origin, float3 end) {
 
 ///////////////////////////////////////////////////////////////////////////
 
-void Portal::encode(out float4 pixels[2]) {
+void Portal::encode(out uint4 pixels[2]) {
     // Pixel 0
     float radius_sq = dot(x_axis, x_axis) + dot(y_axis, y_axis); // Max distance is hypothenuse, then squared.
-    pixels[0] = float4(position, radius_sq);
+    pixels[0] = asuint(float4(position, radius_sq));
 
     // Pixel 1
     uint3 axis_packed = (f32tof16(y_axis) << 16) | f32tof16(x_axis);
-    uint4 pixel1_bits = uint4(axis_packed, is_ellipse ? 0x1 : 0x0);
-    pixels[1] = float4(asfloat(pixel1_bits.xyz), is_ellipse ? 1 : 0);
+    pixels[1] = uint4(axis_packed, is_ellipse ? 0x1 : 0x0);
 }
-static Portal Portal::decode(PortalPixel0 pixel0, float4 pixel1) {
+static Portal Portal::decode(PortalPixel0 pixel0, uint4 pixel1) {
     Portal p;
     p.position = pixel0.position;
 
-    uint4 pixel1_bits = asuint(pixel1);
-    p.is_ellipse = pixel1.w > 0;
-    p.x_axis = f16tof32(pixel1_bits.xyz & 0xFFFF);
-    p.y_axis = f16tof32((pixel1_bits.xyz >> 16) & 0xFFFF);
+    p.is_ellipse = pixel1.w & 0x1;
+    p.x_axis = f16tof32(pixel1.xyz & 0xFFFF);
+    p.y_axis = f16tof32(pixel1.xyz >> 16);
 
     p.normal = cross(p.x_axis, p.y_axis);
     return p;

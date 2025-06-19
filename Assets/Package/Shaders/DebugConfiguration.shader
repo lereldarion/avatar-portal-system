@@ -73,7 +73,7 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
             #include "portal_grabpass.hlsl"
 
             uniform float _Use_Portal_CRT;
-            uniform Texture2D<float4> _Portal_CRT;
+            uniform Texture2D<uint4> _Portal_CRT;
             #include "portal_crt.hlsl"
             
             [maxvertexcount(9 * 14)]

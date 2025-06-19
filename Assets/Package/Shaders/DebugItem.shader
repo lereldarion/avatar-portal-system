@@ -77,10 +77,10 @@ Shader "Lereldarion/Portal/DebugItem" {
 
                 [loop]
                 for(uint index = 0; index < 32; index += 1) {
-                    PortalPixel0 p0 = PortalPixel0::decode(_Portal_CRT[uint2(index, 0)]);
+                    PortalPixel0 p0 = PortalPixel0::decode(_Portal_CRT, index);
                     if(!p0.is_enabled()) { break; }
                     if(!p0.fast_intersect(_WorldSpaceCameraPos, input.world_position)) { continue; }
-                    Portal portal = Portal::decode(p0, _Portal_CRT[uint2(index, 1)]);
+                    Portal portal = Portal::decode(p0, _Portal_CRT, index);
 
                     if(portal.segment_intersect(_WorldSpaceCameraPos, input.world_position)) {
                         portal_parity = !portal_parity;

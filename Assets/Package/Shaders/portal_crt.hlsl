@@ -18,6 +18,9 @@ struct PortalPixel0 {
         o.radius_sq = pixel_fp.w;
         return o;
     }
+    static PortalPixel0 decode(Texture2D<uint4> crt, uint index) {
+        return decode(crt[uint2(index, 0)]);
+    }
     bool fast_intersect(float3 origin, float3 end);
 };
 
@@ -29,9 +32,18 @@ struct Portal {
 
     // Only when decoded
     float3 normal;
+    float radius_sq;
+
+    void finalize() {
+        normal = cross(x_axis, y_axis);
+        radius_sq = dot(x_axis, x_axis) + dot(y_axis, y_axis); // Max distance is hypothenuse, then squared.
+    }
     
     void encode(out uint4 pixels[2]);
     static Portal decode(PortalPixel0 pixel0, uint4 pixel1);
+    static Portal decode(PortalPixel0 pixel0, Texture2D<uint4> crt, uint index) {
+        return decode(pixel0, crt[uint2(index, 1)]);
+    }
 
     bool segment_intersect(float3 origin, float3 end);
 };
@@ -90,7 +102,7 @@ static Portal Portal::decode(PortalPixel0 pixel0, uint4 pixel1) {
     p.x_axis = f16tof32(pixel1.xyz & 0xFFFF);
     p.y_axis = f16tof32(pixel1.xyz >> 16);
 
-    p.normal = cross(p.x_axis, p.y_axis);
+    p.finalize();
     return p;
 }
 

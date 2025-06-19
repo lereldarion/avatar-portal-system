@@ -4,7 +4,6 @@ Shader "Lereldarion/Portal/CRT" {
     }
     SubShader {
         Tags {
-            "Queue" = "Geometry-100"
             "PreviewType" = "Plane"
         }
 

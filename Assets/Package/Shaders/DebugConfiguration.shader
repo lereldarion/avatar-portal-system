@@ -2,7 +2,7 @@
 Shader "Lereldarion/Portal/DebugConfiguration" {
     Properties {
         [Enum(GrabPass,0,CRT,1)] _Use_Portal_CRT("Data source", Float) = 0
-        _Portal_CRT("CRT texture", 2D) = ""
+        [NoScaleOffset] _Portal_CRT("CRT texture", 2D) = ""
     }
     SubShader {
         Tags {

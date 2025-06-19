@@ -6,6 +6,7 @@ Shader "Lereldarion/Portal/DebugItem" {
         [Header(Portal)]
         [ToggleUI] _Camera_In_Portal("Camera is in portal space", Float) = 0
         _Item_Portal_State("Item portal state : 0=w,1=p,2+n=transiting_fwd,-2-n=transiting_back)", Integer) = 0
+        [NoScaleOffset] _Portal_CRT("Portal CRT texture", 2D) = ""
     }
     SubShader {
         Tags {
@@ -42,8 +43,9 @@ Shader "Lereldarion/Portal/DebugItem" {
                 output.position = UnityWorldToClipPos(output.world_position);
             }
             
-            #include "portal_grabpass.hlsl"
-            uniform Texture2D<float4> _Lereldarion_Portal_System_GrabPass;
+            uniform Texture2D<uint4> _Portal_CRT;
+            #include "portal_crt.hlsl"
+
             uniform float _Camera_In_Portal;
             uniform int _Item_Portal_State;
 
@@ -51,9 +53,6 @@ Shader "Lereldarion/Portal/DebugItem" {
 
             half4 fragment_stage (FragmentData input) : SV_Target {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
-
-                // Just test if any portal is here
-                LP::System system = LP::System::decode(_Lereldarion_Portal_System_GrabPass[uint2(0, 0)]);
 
                 bool portal_parity = _Camera_In_Portal;
                 bool in_portal_space = false;
@@ -77,13 +76,11 @@ Shader "Lereldarion/Portal/DebugItem" {
                 }
 
                 [loop]
-                for(uint index = 0; index < system.portal_count; index += 1) {
-                    float4 pixels[3] = {
-                        _Lereldarion_Portal_System_GrabPass[uint2(1 + 3 * index, 0)],
-                        _Lereldarion_Portal_System_GrabPass[uint2(2 + 3 * index, 0)],
-                        _Lereldarion_Portal_System_GrabPass[uint2(3 + 3 * index, 0)]
-                    };
-                    LP::Portal portal = LP::Portal::decode(pixels);
+                for(uint index = 0; index < 32; index += 1) {
+                    PortalPixel0 p0 = PortalPixel0::decode(_Portal_CRT[uint2(index, 0)]);
+                    if(!p0.is_enabled()) { break; }
+                    if(!p0.fast_intersect(_WorldSpaceCameraPos, input.world_position)) { continue; }
+                    Portal portal = Portal::decode(p0, _Portal_CRT[uint2(index, 1)]);
 
                     if(portal.segment_intersect(_WorldSpaceCameraPos, input.world_position)) {
                         portal_parity = !portal_parity;

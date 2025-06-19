@@ -22,7 +22,11 @@ Material:
   m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
-    m_TexEnvs: []
+    m_TexEnvs:
+    - _Portal_CRT:
+        m_Texture: {fileID: 8600000, guid: a34942098033efa44b7edf877513a471, type: 2}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     m_Ints:
     - _Item_Portal_State: 0
     - _Portal_StencilBit: 128

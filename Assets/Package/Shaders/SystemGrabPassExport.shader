@@ -62,11 +62,6 @@ Shader "Lereldarion/Portal/SystemGrabPassExport" {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(pixel);
                 return pixel.data;
             }
-
-            // VRChat camera pos variables contain positions independently of the camera that is rendering.
-            // Thus use these to export camera positions to grabpass and then run CRT animator logic for camera portal states.
-            uniform float3 _VRChatScreenCameraPos;
-            uniform float3 _VRChatPhotoCameraPos;
                         
             [maxvertexcount(6)]
             void geometry_stage(point WorldMeshData input_array[1], uint primitive_id : SV_PrimitiveID, inout PointStream<PixelData> stream) {
@@ -75,19 +70,6 @@ Shader "Lereldarion/Portal/SystemGrabPassExport" {
                 
                 PixelData output;
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
-
-                // Cameras have no specific vertex, reuse the first 2.
-                if(primitive_id <= 1) {
-                    Camera c;
-                    c.position = primitive_id == 0 ? _VRChatScreenCameraPos : _VRChatPhotoCameraPos;
-                    float4 pixels[2];
-                    c.encode_grabpass(pixels);
-                    for(uint i = 0; i < 2; i += 1) {
-                        output.position = target_pixel_to_cs(uint2(0, 1 + i + 2 * primitive_id), _ScreenParams.xy);
-                        output.data = pixels[i];
-                        stream.Append(output);
-                    }
-                }
                 
                 int vertex_type = input.uv0.x;
                 switch(vertex_type) {

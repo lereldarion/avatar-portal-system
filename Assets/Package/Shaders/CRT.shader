@@ -58,7 +58,7 @@ Shader "Lereldarion/Portal/CRT" {
             }
 
             // VRChat global variables, independent on the rendering camera.
-            // Hopefully available in the CRT, otherwise I have grabpass encodings.
+            // Available in the CRT so no need for grabpass encodings.
             uniform float3 _VRChatScreenCameraPos;
             uniform float3 _VRChatPhotoCameraPos;
 
@@ -115,6 +115,7 @@ Shader "Lereldarion/Portal/CRT" {
 
                     // New camera state
                     for(uint i = 0; i < 2; i += 1) {
+                        camera[i].position = new_camera[i];
                         output.position = target_pixel_to_cs(uint2(0, i), _CustomRenderTextureInfo.xy);
                         output.data = camera[i].encode_crt();
                         stream.Append(output);

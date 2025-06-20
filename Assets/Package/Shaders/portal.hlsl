@@ -68,10 +68,6 @@ struct Camera {
         return c;
     }
     static Camera decode_crt(Texture2D<uint4> crt, uint index) { return decode_crt(crt[uint2(0, index)]); }
-
-    void encode_grabpass(out float4 pixels[2]);
-    static Camera decode_grabpass(float4 pixels[2]);
-    static Camera decode_grabpass(Texture2D<float4> grabpass, uint index);
 };
 
 ///////////////////////////////////////////////////////////////////////////
@@ -196,32 +192,6 @@ static Portal Portal::decode_grabpass(Texture2D<float4> grabpass, uint index) {
         grabpass[uint2(2 + 4 * index, 0)],
         grabpass[uint2(3 + 4 * index, 0)],
         grabpass[uint2(4 + 4 * index, 0)],
-    };
-    return decode_grabpass(pixels);
-}
-
-void Camera::encode_grabpass(out float4 pixels[2]) {
-    // World position needs full f32 => 9 x f16.
-    uint3 position_bits = asuint(position);
-    // However highest bits are only 4 per xyz, so we can pack them into one u14 -> f16
-    uint3 highest_bits = (position_bits >> 28) & 0xF;
-    uint packed_highest_bits = highest_bits[0] | (highest_bits[1] << 4) | (highest_bits[2] << 8); // 12 bits
-    pixels[0] = float4(u14_to_f16(position_bits)      , u14_to_f16(packed_highest_bits));
-    pixels[1] = float4(u14_to_f16(position_bits >> 14), 0);
-}
-static Camera Camera::decode_grabpass(float4 pixels[2]) {
-    uint packed_highest_bits = f16_to_u14(pixels[0].a) & 0xFFF; // 12 bits
-    uint3 highest_bits = (uint3(0x00F, 0x0F0, 0xF00) & packed_highest_bits) << (28 - uint3(0, 4, 8));
-    uint3 position_bits = f16_to_u14(pixels[0].rgb) | (f16_to_u14(pixels[1].rgb) << 14) | highest_bits;
-    
-    Camera c;
-    c.position = asfloat(position_bits);
-    return c;
-}
-static Camera Camera::decode_grabpass(Texture2D<float4> grabpass, uint index) {
-    float4 pixels[2] = {
-        grabpass[uint2(0, 1 + 2 * index)],
-        grabpass[uint2(0, 2 + 2 * index)],
     };
     return decode_grabpass(pixels);
 }

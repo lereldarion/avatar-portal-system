@@ -72,7 +72,7 @@ namespace Lereldarion.Portal
         {
             /// <summary>For points that force mesh bounds</summary>
             Ignored = 0,
-            System = 1,
+            Control = 1,
             QuadPortal = 2,
             EllipsePortal = 3,
         }
@@ -87,37 +87,44 @@ namespace Lereldarion.Portal
         {
             Transform root = system.transform;
             Mesh mesh = new Mesh();
+            SkinnedMeshRenderer renderer = root.gameObject.AddComponent<SkinnedMeshRenderer>();
+
+            // Scan portal system components
             var vertices = new List<SystemMeshVertex>();
             var context = new Context { Animator = animator, System = system, Vertices = vertices };
-
-            SetupBounds(context);
+            SetupBoundVertices(context);
+            SetupControlVertex(context);
             foreach (var portal in root.GetComponentsInChildren<QuadPortal>(true)) { SetupQuadPortal(portal, context); }
-            SetupSystemVertex(context); // Last, to have an accurate entity count.
 
-            mesh.vertices = vertices.Select(vertex => root.InverseTransformPoint(vertex.transform.position)).ToArray();
-            mesh.SetNormals(vertices.Select(vertex => root.InverseTransformVector(vertex.transform.TransformVector(vertex.normal))).ToArray());
-            mesh.SetTangents(vertices.Select(vertex =>
+            // Make skinned mesh
             {
-                Vector3 v = root.InverseTransformVector(vertex.transform.TransformVector(vertex.tangent));
-                return new Vector4(v.x, v.y, v.z, 1f);
-            }).ToArray());
-            mesh.SetUVs(0, vertices.Select(vertex => vertex.uv0).ToArray());
-            mesh.SetIndices(Enumerable.Range(0, vertices.Count()).ToArray(), MeshTopology.Points, 0);
+                mesh.vertices = vertices.Select(vertex => root.InverseTransformPoint(vertex.transform.position)).ToArray();
+                mesh.SetNormals(vertices.Select(vertex => root.InverseTransformVector(vertex.transform.TransformVector(vertex.normal))).ToArray());
+                mesh.SetTangents(vertices.Select(vertex =>
+                {
+                    Vector3 v = root.InverseTransformVector(vertex.transform.TransformVector(vertex.tangent));
+                    return new Vector4(v.x, v.y, v.z, 1f);
+                }).ToArray());
+                mesh.SetUVs(0, vertices.Select(vertex => vertex.uv0).ToArray());
+                mesh.SetIndices(Enumerable.Range(0, vertices.Count()).ToArray(), MeshTopology.Points, 0);
 
-            Transform[] bones = vertices.Select(vertex => vertex.transform).ToArray();
-            mesh.boneWeights = Enumerable.Range(0, vertices.Count()).Select(i =>
-            {
-                var bw = new BoneWeight();
-                bw.boneIndex0 = i;
-                bw.weight0 = 1;
-                return bw;
-            }).ToArray();
-            mesh.bindposes = bones.Select(bone => bone.worldToLocalMatrix * root.localToWorldMatrix).ToArray();
+                Transform[] bones = vertices.Select(vertex => vertex.transform).ToArray();
+                mesh.boneWeights = Enumerable.Range(0, vertices.Count()).Select(i =>
+                {
+                    var bw = new BoneWeight();
+                    bw.boneIndex0 = i;
+                    bw.weight0 = 1;
+                    return bw;
+                }).ToArray();
+                mesh.bindposes = bones.Select(bone => bone.worldToLocalMatrix * root.localToWorldMatrix).ToArray();
 
-            var renderer = root.gameObject.AddComponent<SkinnedMeshRenderer>();
-            renderer.sharedMesh = mesh;
-            renderer.bones = bones;
-            renderer.material = system.GrabPassExport;
+                renderer.sharedMesh = mesh;
+                renderer.bones = bones;
+                renderer.material = system.GrabPassExport;
+            }
+
+            // Set CRT parameters
+            system.Crt.material.SetInteger("_GrabPass_Portal_Count", context.PortalCount);
 
             Object.DestroyImmediate(system); // Cleanup components
             return mesh;
@@ -138,16 +145,16 @@ namespace Lereldarion.Portal
             public int UniqueId() { return id++; }
         }
 
-        private void SetupSystemVertex(Context context)
+        private void SetupControlVertex(Context context)
         {
-            // Provide total portal count to grabpass and then CRT
+            // Provide animator values to grabpass and then CRT
             // Other data is unused
             context.Vertices.Add(new SystemMeshVertex
             {
                 transform = context.System.transform,
                 normal = new Vector3(0, 0, 0),
                 tangent = new Vector3(0, 0, 0),
-                uv0 = new Vector2((float) VertexType.System, (float) context.PortalCount),
+                uv0 = new Vector2((float) VertexType.Control, 0),
             });
         }
 
@@ -155,7 +162,7 @@ namespace Lereldarion.Portal
         /// Creates vertices and animator used to setup occlusion bounds
         /// </summary>
         /// <param name="context">Data of the current portal system being built</param>
-        private void SetupBounds(Context context)
+        private void SetupBoundVertices(Context context)
         {
             // TODO create gameobject + vertex bound to it. Add animator init to check update on skinned mesh and move bounds.
         }
@@ -178,7 +185,7 @@ namespace Lereldarion.Portal
                 uv0 = new Vector2((float)vertex_type, (float)portal_id),
             });
 
-            Object.DestroyImmediate(portal); // Remove items before upload
+            Object.DestroyImmediate(portal); // Cleanup components
         }
 
         static private System.Action<AacFlEditClip> SetConstraintActive(VRC.Dynamics.VRCConstraintBase constraint, bool active)

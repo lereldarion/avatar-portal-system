@@ -1009,6 +1009,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   OcclusionBoxSize: 100
+  Crt: {fileID: 8600000, guid: a34942098033efa44b7edf877513a471, type: 2}
   GrabPassExport: {fileID: 2100000, guid: d5341b3e6cdc47947a1e781f126fc90c, type: 2}
   SealPortals: {fileID: 0}
 --- !u!1 &2012814117

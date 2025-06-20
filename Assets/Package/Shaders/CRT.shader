@@ -1,7 +1,8 @@
 
 Shader "Lereldarion/Portal/CRT" {
     Properties {
-        _Camera_Movement_Max_Distance("Maximum distance allowed to consider camera movement legit", Float) = 1
+        _Valid_Movement_Max_Distance("Maximum distance allowed to consider a movement legit (no TP)", Float) = 1
+        _GrabPass_Portal_Count("Portal count to scan in the grabpass (set by export script)", Integer) = 0
     }
     SubShader {
         Tags {
@@ -61,11 +62,12 @@ Shader "Lereldarion/Portal/CRT" {
             uniform float3 _VRChatScreenCameraPos;
             uniform float3 _VRChatPhotoCameraPos;
 
-            uniform float _Camera_Movement_Max_Distance;
+            uniform float _Valid_Movement_Max_Distance;
+            uniform uint _GrabPass_Portal_Count;
 
             bool is_camera_movement_valid(float3 from, float3 to) {
                 float3 movement = to - from;
-                return all(from != 0 && to != 0) && dot(movement, movement) < _Camera_Movement_Max_Distance * _Camera_Movement_Max_Distance;
+                return all(from != 0 && to != 0) && dot(movement, movement) < _Valid_Movement_Max_Distance * _Valid_Movement_Max_Distance;
             }
                         
             [maxvertexcount(128)]
@@ -74,7 +76,13 @@ Shader "Lereldarion/Portal/CRT" {
                 if(primitive_id == 0) {
                     PixelData output;
                     
-                    System system = System::decode_grabpass(_Lereldarion_Portal_System_GrabPass);
+                    // Max supported size for now
+                    _GrabPass_Portal_Count = min(_GrabPass_Portal_Count, 32);
+
+                    Control control = Control::decode_grabpass(_Lereldarion_Portal_System_GrabPass);
+                    if(!control.system_valid) {
+                        _GrabPass_Portal_Count = 0;
+                    }
 
                     Camera camera[2] = { Camera::decode_crt(_SelfTexture2D, 0), Camera::decode_crt(_SelfTexture2D, 1) };
                     float3 new_camera[2] = { _VRChatScreenCameraPos, _VRChatPhotoCameraPos };
@@ -84,9 +92,8 @@ Shader "Lereldarion/Portal/CRT" {
                     };
                     
                     uint active_portal_count = 0;
-                    uint max_portal_scan_count = min(system.portal_count, 32);
                     [loop]
-                    for(uint index = 0; index < max_portal_scan_count; index += 1) {
+                    for(uint index = 0; index < _GrabPass_Portal_Count; index += 1) {
                         Portal p = Portal::decode_grabpass(_Lereldarion_Portal_System_GrabPass, index);
                         if(p.is_enabled()) {
                             uint4 pixels[2];

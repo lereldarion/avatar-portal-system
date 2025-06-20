@@ -139,8 +139,9 @@ uint3 f16_to_u14(float3 input) { return f32tof16(input) & 0x00003fff; }
 float u14_to_f16(uint input) { return f16tof32(input & 0x00003fff); }
 float3 u14_to_f16(uint3 input) { return  f16tof32(input & 0x00003fff); }
 
-struct System {
-    uint portal_count;
+struct Control {
+    bool system_valid; // Decode only
+    // TODO encode some animator values
 
     // f16 sentinel value (>1) to check if system is enabled & grabpass is RGBA16_FLOAT and not RGBA8_UNORM.
     static const float sentinel = 3.141592653589793;
@@ -148,21 +149,17 @@ struct System {
     float4 encode_grabpass() {
         return float4(
             sentinel, 
-            u14_to_f16(portal_count),
-            0, // TODO use for transmiting material animation values
+            0,
+            0,
             0
         );
     }
-    static System decode_grabpass(float4 pixel) {
-        // Setup with "disabled" values if sentinel fails.
-        System s;
-        s.portal_count = 0;
-        if(abs(pixel[0] - sentinel) < 0.001) {
-            s.portal_count = f16_to_u14(pixel[1]);
-        }
-        return s;
+    static Control decode_grabpass(float4 pixel) {
+        Control c;
+        c.system_valid = abs(pixel[0] - sentinel) < 0.001;
+        return c;
     }
-    static System decode_grabpass(Texture2D<float4> grabpass) { return decode_grabpass(grabpass[uint2(0, 0)]); }
+    static Control decode_grabpass(Texture2D<float4> grabpass) { return decode_grabpass(grabpass[uint2(0, 0)]); }
 };
 
 void Portal::encode_grabpass(out float4 pixels[4]) {

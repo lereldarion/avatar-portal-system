@@ -12,7 +12,10 @@ namespace Lereldarion.Portal
         [Min(1f), Tooltip("Force occlusion bounds of the system to this size")]
         public float OcclusionBoxSize = 100f;
 
-        [Header("Material")]
+        [Tooltip("CRT : some parameters are set from export script")]
+        public CustomRenderTexture Crt;
+
+        [Header("Materials")]
         public Material GrabPassExport;
         public Material SealPortals;
     }

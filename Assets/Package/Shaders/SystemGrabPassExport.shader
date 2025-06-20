@@ -75,10 +75,9 @@ Shader "Lereldarion/Portal/SystemGrabPassExport" {
                 switch(vertex_type) {
                     case 1: {
                         // System control pixel.
-                        System system;
-                        system.portal_count = input.uv0.y;                  
+                        Control control;
                         output.position = target_pixel_to_cs(uint2(0, 0), _ScreenParams.xy);
-                        output.data = system.encode_grabpass();
+                        output.data = control.encode_grabpass();
                         stream.Append(output);
                         break;
                     }

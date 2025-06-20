@@ -49,7 +49,7 @@ Shader "Lereldarion/Portal/SystemGrabPassExport" {
                 float4 data : DATA;
                 UNITY_VERTEX_OUTPUT_STEREO
 
-                static void emit(inout PointStream<PixelData> stream, uint2 coordinates, float data) {
+                static void emit(inout PointStream<PixelData> stream, uint2 coordinates, float4 data) {
                     PixelData output;
                     UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
                     output.position = target_pixel_to_cs(coordinates, _ScreenParams.xy);
@@ -85,9 +85,7 @@ Shader "Lereldarion/Portal/SystemGrabPassExport" {
                     case 1: {
                         // System control pixel.
                         Control control;
-                        output.position = target_pixel_to_cs(uint2(0, 0), _ScreenParams.xy);
-                        output.data = control.encode_grabpass();
-                        stream.Append(output);
+                        PixelData::emit(stream, uint2(0, 0), control.encode_grabpass());
                         break;
                     }
                     case 2: case 3: {
@@ -103,9 +101,7 @@ Shader "Lereldarion/Portal/SystemGrabPassExport" {
                         float4 pixels[4];
                         portal.encode_grabpass(pixels);
                         for(uint i = 0; i < 4; i += 1) {
-                            output.position = target_pixel_to_cs(uint2(1 + i + 4 * portal_id, 0), _ScreenParams.xy);
-                            output.data = pixels[i];
-                            stream.Append(output);
+                            PixelData::emit(stream, uint2(1 + i + 4 * portal_id, 0), pixels[i]);
                         }
                         break;
                     }

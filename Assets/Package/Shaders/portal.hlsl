@@ -1,5 +1,5 @@
-#ifndef LERELDARION_PORTAL_CRT_H
-#define LERELDARION_PORTAL_CRT_H
+#ifndef LERELDARION_PORTAL_H
+#define LERELDARION_PORTAL_H
 
 // CRT Encodings :
 // Header at (0, 0).

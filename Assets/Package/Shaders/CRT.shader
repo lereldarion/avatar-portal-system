@@ -84,23 +84,21 @@ Shader "Lereldarion/Portal/CRT" {
 
                 Control control = Control::decode_grabpass(_Lereldarion_Portal_System_GrabPass);
                 if(!control.system_valid) {
-                    Header header;
-                    header.portal_mask = 0x0;
-                    header.is_enabled = false;
-                    PixelData::emit(stream, uint2(0, 0), header.encode_crt());
+                    PixelData::emit(stream, uint2(0, 0), Header::encode_disabled_crt());
                     return;
                 }
 
-                Header header;
+                Header header = Header::decode_crt(_SelfTexture2D); // Retrieve camera state
                 header.portal_mask = 0x0;
                 header.is_enabled = true;
                 
-                
-                Camera camera[2] = { Camera::decode_crt(_SelfTexture2D, 0), Camera::decode_crt(_SelfTexture2D, 1) };
-                float3 new_camera[2] = { _VRChatScreenCameraPos, _VRChatPhotoCameraPos };
+                float3 camera_pos[2] = { CameraPosition::decode_crt(_SelfTexture2D, 0), CameraPosition::decode_crt(_SelfTexture2D, 1) };
+                float3 new_camera_pos[2] = { _VRChatScreenCameraPos, _VRChatPhotoCameraPos };
+                PixelData::emit(stream, uint2(0, 1), CameraPosition::encode_crt(new_camera_pos[0]));
+                PixelData::emit(stream, uint2(0, 2), CameraPosition::encode_crt(new_camera_pos[1]));
                 bool camera_movement_valid[2] = {
-                    is_camera_movement_valid(camera[0].position, new_camera[0]),
-                    is_camera_movement_valid(camera[1].position, new_camera[1]),
+                    is_camera_movement_valid(camera_pos[0], new_camera_pos[0]),
+                    is_camera_movement_valid(camera_pos[1], new_camera_pos[1]),
                 };
 
                 _GrabPass_Portal_Count = min(_GrabPass_Portal_Count, 32); // Max supported size for now, safety against bad value
@@ -116,22 +114,16 @@ Shader "Lereldarion/Portal/CRT" {
                         header.portal_mask |= 0x1 << index;
 
                         // Update camera portal state
+                        [unroll]
                         for(uint i = 0; i < 2; i += 1) {
-                            if(camera_movement_valid[i] && p.segment_intersect(camera[i].position, new_camera[i])) {
-                                camera[i].in_portal = !camera[i].in_portal;
+                            if(camera_movement_valid[i] && p.segment_intersect(camera_pos[i], new_camera_pos[i])) {
+                                header.camera_in_portal[i] = !header.camera_in_portal[i];
                             }
                         }
                     }
                 }
 
-                PixelData::emit(stream, uint2(0, 0), header.encode_crt());
-
-                // New camera state
-                for(index = 0; index < 2; index += 1) {
-                    camera[index].position = new_camera[index];
-                    PixelData::emit(stream, uint2(0, 1 + index), camera[index].encode_crt());
-                }
-                
+                PixelData::emit(stream, uint2(0, 0), header.encode_crt());                
             }
             ENDCG
         }

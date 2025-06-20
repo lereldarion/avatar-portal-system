@@ -3,18 +3,19 @@
 
 // CRT Encodings :
 // Header at (0, 0).
-// - x : u32 is a bitmask of active portals for fast scan.
-// - w : system is active
-// Camera pixels
-// - pixel = uint4 as float3(wpos.xyz), in_portal as bit0 of w.
+// - r : bit0 = system enabled, bit[1,2] = main/photo camera state
+// - g : u32 is a bitmask of active portals for fast scan.
+// Camera position pixels
+// - pixel = uint4 as float3(wpos.xyz).
 // - main camera as (0, 1), photo camera as (0, 2).
 // Portal `i` is encoded by 2 f32x4 pixels
 // - pixel0 at (1, i) = uint4 as float4(wpos.xyz, w = radius^2)
 // - pixel1 at (2, i) = x/y axis as f16x6 in u16x6 in u32x3. is_ellipse as bit0 in w.
 
 struct Header {
-    uint portal_mask;
     bool is_enabled;
+    bool camera_in_portal[2];
+    uint portal_mask;
 
     bool has_portals() { return portal_mask != 0x0; }
     uint pop_active_portal() {
@@ -23,28 +24,16 @@ struct Header {
         return index;
     }
 
-    uint4 encode_crt() { return uint4(portal_mask, 0, 0, is_enabled ? 0x1 : 0x0); }
-    static Header decode_crt(uint4 pixel) { 
-        Header h;
-        h.portal_mask = pixel.r;
-        h.is_enabled = pixel.a & 0x1;
-        return h;
-    }
+    static uint4 encode_disabled_crt() { return uint4(0, 0, 0, 0); }
+    uint4 encode_crt();
+    static Header decode_crt(uint4 pixel);
     static Header decode_crt(Texture2D<uint4> crt) { return decode_crt(crt[uint2(0, 0)]); }
 };
 
-struct Camera {
-    float3 position;
-    bool in_portal; // Only present in CRT ; state of the camera.
-
-    uint4 encode_crt() { return uint4(asuint(position), in_portal ? 0x1 : 0x0) ; }
-    static Camera decode_crt(uint4 pixel) {
-        Camera c;
-        c.position = asfloat(pixel.rgb);
-        c.in_portal = pixel.a & 0x1;
-        return c;
-    }
-    static Camera decode_crt(Texture2D<uint4> crt, uint index) { return decode_crt(crt[uint2(0, 1 + index)]); }
+struct CameraPosition {
+    static uint4 encode_crt(float3 position) { return uint4(asuint(position), 0); }
+    static float3 decode_crt(uint4 pixel) { return asfloat(pixel.rgb); }
+    static float3 decode_crt(Texture2D<uint4> crt, uint index) { return decode_crt(crt[uint2(0, 1 + index)]); }
 };
 
 struct PortalPixel0 {
@@ -130,6 +119,23 @@ bool Portal::segment_intersect(float3 origin, float3 end) {
 
 ///////////////////////////////////////////////////////////////////////////
 // CRT encodings
+
+uint4 Header::encode_crt() {
+    return uint4(
+        (is_enabled ? 0x1 : 0x0) | (camera_in_portal[0] ? 0x2 : 0x0) | (camera_in_portal[1] ? 0x4 : 0x0),
+        portal_mask,
+        0,
+        0
+    );
+}
+static Header Header::decode_crt(uint4 pixel) { 
+    Header h;
+    h.is_enabled = pixel.r & 0x1;
+    h.camera_in_portal[0] = pixel.r & 0x2;
+    h.camera_in_portal[1] = pixel.r & 0x4;
+    h.portal_mask = pixel.g;
+    return h;
+}
 
 void Portal::encode_crt(out uint4 pixels[2]) {
     // Pixel 0

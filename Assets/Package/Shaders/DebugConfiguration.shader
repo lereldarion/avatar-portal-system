@@ -117,21 +117,21 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
                 #ifdef _PORTAL_DATA_SOURCE_CRT
                 // Cameras
                 for(uint index = 0; index < 2; index += 1) {
-                    Camera c = Camera::decode_crt(_Portal_CRT, index);
+                    float3 position = CameraPosition::decode_crt(_Portal_CRT, index);
                     
                     // Only display camera position if not the current one.
                     float s = 0.1;
-                    if(distance(c.position, _WorldSpaceCameraPos) > s) {
-                        LineDrawer drawer = LineDrawer::init(float3(index == 0, index == 1, c.in_portal));
+                    if(distance(position, _WorldSpaceCameraPos) > s) {
+                        LineDrawer drawer = LineDrawer::init(float3(index == 0, index == 1, header.camera_in_portal[index]));
                         stream.RestartStrip();
-                        drawer.solid_ws(stream, c.position - float3(s, 0, 0));
-                        drawer.solid_ws(stream, c.position + float3(s, 0, 0));
+                        drawer.solid_ws(stream, position - float3(s, 0, 0));
+                        drawer.solid_ws(stream, position + float3(s, 0, 0));
                         stream.RestartStrip();
-                        drawer.solid_ws(stream, c.position - float3(0, s, 0));
-                        drawer.solid_ws(stream, c.position + float3(0, s, 0));
+                        drawer.solid_ws(stream, position - float3(0, s, 0));
+                        drawer.solid_ws(stream, position + float3(0, s, 0));
                         stream.RestartStrip();
-                        drawer.solid_ws(stream, c.position - float3(0, 0, s));
-                        drawer.solid_ws(stream, c.position + float3(0, 0, s));
+                        drawer.solid_ws(stream, position - float3(0, 0, s));
+                        drawer.solid_ws(stream, position + float3(0, 0, s));
                     }
                 }
                 #endif

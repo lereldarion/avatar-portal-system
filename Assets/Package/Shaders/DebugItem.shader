@@ -57,48 +57,52 @@ Shader "Lereldarion/Portal/DebugItem" {
             half4 fragment_stage (FragmentData input) : SV_Target {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
 
-                Camera camera = Camera::decode_crt(_Portal_CRT, _VRChatCameraMode == 0 ? 0 : 1);
-                bool portal_parity = _Camera_In_Portal; // camera.in_portal; // FIXME Testing
-                bool in_portal_space = false;
-
-                uint transiting_portal_id = 1000; // Not tested
-                float transiting_direction = 1;
-
-                if(_Item_Portal_State == 0) {
-                    // World, do nothing
-                } else if(_Item_Portal_State == 1) {
-                    // Portal
-                    portal_parity = !portal_parity;
-                    in_portal_space = true;
-                } else {
-                    if (_Item_Portal_State < 0) {
-                        transiting_direction = -1;
-                        transiting_portal_id = 2 - _Item_Portal_State;
-                    } else {
-                        transiting_portal_id = _Item_Portal_State - 2;
-                    }
-                }
-
-                [loop]
-                for(uint index = 0; index < 32; index += 1) {
-                    PortalPixel0 p0 = PortalPixel0::decode_crt(_Portal_CRT, index);
-                    if(!p0.is_enabled()) { break; }
-                    if(!p0.fast_intersect(_WorldSpaceCameraPos, input.world_position)) { continue; }
-                    Portal portal = Portal::decode_crt(p0, _Portal_CRT, index);
-
-                    if(portal.segment_intersect(_WorldSpaceCameraPos, input.world_position)) {
+                Header header = Header::decode_crt(_Portal_CRT);
+                if(header.is_enabled) {
+                    Camera camera = Camera::decode_crt(_Portal_CRT, _VRChatCameraMode == 0 ? 0 : 1);
+                    bool portal_parity = _Camera_In_Portal; // camera.in_portal; // FIXME Testing
+                    bool in_portal_space = false;
+    
+                    uint transiting_portal_id = 1000; // Not tested
+                    float transiting_direction = 1;
+    
+                    if(_Item_Portal_State == 0) {
+                        // World, do nothing
+                    } else if(_Item_Portal_State == 1) {
+                        // Portal
                         portal_parity = !portal_parity;
-                    }
-
-                    if(index == transiting_portal_id) {
-                        if(dot(input.world_position - portal.position, portal.normal) * transiting_direction >= 0) {
-                            portal_parity = !portal_parity;
-                            in_portal_space = true;
+                        in_portal_space = true;
+                    } else {
+                        if (_Item_Portal_State < 0) {
+                            transiting_direction = -1;
+                            transiting_portal_id = 2 - _Item_Portal_State;
+                        } else {
+                            transiting_portal_id = _Item_Portal_State - 2;
                         }
                     }
+    
+                    [loop]
+                    while(header.has_portals()) {
+                        uint index = header.pop_active_portal();
+                        PortalPixel0 p0 = PortalPixel0::decode_crt(_Portal_CRT, index);
+                        if(!p0.is_enabled()) { break; }
+                        if(!p0.fast_intersect(_WorldSpaceCameraPos, input.world_position)) { continue; }
+                        Portal portal = Portal::decode_crt(p0, _Portal_CRT, index);
+    
+                        if(portal.segment_intersect(_WorldSpaceCameraPos, input.world_position)) {
+                            portal_parity = !portal_parity;
+                        }
+    
+                        if(index == transiting_portal_id) {
+                            if(dot(input.world_position - portal.position, portal.normal) * transiting_direction >= 0) {
+                                portal_parity = !portal_parity;
+                                in_portal_space = true;
+                            }
+                        }
+                    }
+    
+                    if(portal_parity) { discard; }
                 }
-
-                if(portal_parity) { discard; }
                 
                 return _Color;
             }

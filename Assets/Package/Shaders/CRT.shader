@@ -11,7 +11,7 @@ Shader "Lereldarion/Portal/CRT" {
 
         ZTest Always
         ZWrite Off
-        Lighting Off
+        Blend Off
 
         Pass {
             // Compact portal positions into 2 f32x4 per portal.
@@ -46,6 +46,13 @@ Shader "Lereldarion/Portal/CRT" {
             struct PixelData {
                 float4 position : SV_POSITION;
                 uint4 data : DATA;
+
+                static void emit(inout PointStream<PixelData> stream, uint2 coordinates, uint4 data) {
+                    PixelData output;
+                    output.position = target_pixel_to_cs(coordinates, _CustomRenderTextureInfo.xy);
+                    output.data = data;
+                    stream.Append(output);
+                }
             };
             
             void vertex_stage (MeshData input, out GeometryData output) {
@@ -73,60 +80,58 @@ Shader "Lereldarion/Portal/CRT" {
             [maxvertexcount(128)]
             void geometry_stage(point GeometryData input[1], uint primitive_id : SV_PrimitiveID, inout PointStream<PixelData> stream) {
                 // Compared to flexcrt we only want one thread that will scan all portals, so just get one iteration.
-                if(primitive_id == 0) {
-                    PixelData output;
-                    
-                    // Max supported size for now
-                    _GrabPass_Portal_Count = min(_GrabPass_Portal_Count, 32);
+                if(primitive_id != 0) { return; }
 
-                    Control control = Control::decode_grabpass(_Lereldarion_Portal_System_GrabPass);
-                    if(!control.system_valid) {
-                        _GrabPass_Portal_Count = 0;
-                    }
+                Control control = Control::decode_grabpass(_Lereldarion_Portal_System_GrabPass);
+                if(!control.system_valid) {
+                    Header header;
+                    header.portal_mask = 0x0;
+                    header.is_enabled = false;
+                    PixelData::emit(stream, uint2(0, 0), header.encode_crt());
+                    return;
+                }
 
-                    Camera camera[2] = { Camera::decode_crt(_SelfTexture2D, 0), Camera::decode_crt(_SelfTexture2D, 1) };
-                    float3 new_camera[2] = { _VRChatScreenCameraPos, _VRChatPhotoCameraPos };
-                    bool camera_movement_valid[2] = {
-                        is_camera_movement_valid(camera[0].position, new_camera[0]),
-                        is_camera_movement_valid(camera[1].position, new_camera[1]),
-                    };
-                    
-                    uint active_portal_count = 0;
-                    [loop]
-                    for(uint index = 0; index < _GrabPass_Portal_Count; index += 1) {
-                        Portal p = Portal::decode_grabpass(_Lereldarion_Portal_System_GrabPass, index);
-                        if(p.is_enabled()) {
-                            uint4 pixels[2];
-                            p.encode_crt(pixels);
-                            for(uint i = 0; i < 2; i += 1) {
-                                output.position = target_pixel_to_cs(uint2(1 + active_portal_count, i), _CustomRenderTextureInfo.xy);
-                                output.data = pixels[i];
-                                stream.Append(output);
-                            }
-                            active_portal_count += 1;
+                Header header;
+                header.portal_mask = 0x0;
+                header.is_enabled = true;
+                
+                
+                Camera camera[2] = { Camera::decode_crt(_SelfTexture2D, 0), Camera::decode_crt(_SelfTexture2D, 1) };
+                float3 new_camera[2] = { _VRChatScreenCameraPos, _VRChatPhotoCameraPos };
+                bool camera_movement_valid[2] = {
+                    is_camera_movement_valid(camera[0].position, new_camera[0]),
+                    is_camera_movement_valid(camera[1].position, new_camera[1]),
+                };
 
-                            // Update camera portal state
-                            for(i = 0; i < 2; i += 1) {
-                                if(camera_movement_valid[i] && p.segment_intersect(camera[i].position, new_camera[i])) {
-                                    camera[i].in_portal = !camera[i].in_portal;
-                                }
+                _GrabPass_Portal_Count = min(_GrabPass_Portal_Count, 32); // Max supported size for now, safety against bad value
+                [loop]
+                for(uint index = 0; index < _GrabPass_Portal_Count; index += 1) {
+                    Portal p = Portal::decode_grabpass(_Lereldarion_Portal_System_GrabPass, index);
+                    if(p.is_enabled()) {
+                        uint4 pixels[2];
+                        p.encode_crt(pixels);
+                        PixelData::emit(stream, uint2(1, index), pixels[0]);
+                        PixelData::emit(stream, uint2(2, index), pixels[1]);
+
+                        header.portal_mask |= 0x1 << index;
+
+                        // Update camera portal state
+                        for(uint i = 0; i < 2; i += 1) {
+                            if(camera_movement_valid[i] && p.segment_intersect(camera[i].position, new_camera[i])) {
+                                camera[i].in_portal = !camera[i].in_portal;
                             }
                         }
                     }
-
-                    // Sentinel pixel with portal of radius 0
-                    output.position = target_pixel_to_cs(uint2(1 + active_portal_count, 0), _CustomRenderTextureInfo.xy);
-                    output.data = PortalPixel0::encode_disabled_crt();
-                    stream.Append(output);
-
-                    // New camera state
-                    for(uint i = 0; i < 2; i += 1) {
-                        camera[i].position = new_camera[i];
-                        output.position = target_pixel_to_cs(uint2(0, i), _CustomRenderTextureInfo.xy);
-                        output.data = camera[i].encode_crt();
-                        stream.Append(output);
-                    }
                 }
+
+                PixelData::emit(stream, uint2(0, 0), header.encode_crt());
+
+                // New camera state
+                for(index = 0; index < 2; index += 1) {
+                    camera[index].position = new_camera[index];
+                    PixelData::emit(stream, uint2(0, 1 + index), camera[index].encode_crt());
+                }
+                
             }
             ENDCG
         }

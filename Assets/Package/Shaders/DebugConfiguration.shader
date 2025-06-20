@@ -82,16 +82,20 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
 
                 if(primitive_id > 0) { return; }
 
+                #ifdef _PORTAL_DATA_SOURCE_CRT
+                Header header = Header::decode_crt(_Portal_CRT);
                 [loop]
-                for(uint index = 0; index < 32; index += 1) {
-                    #ifdef _PORTAL_DATA_SOURCE_CRT
+                while(header.has_portals()) {
+                    uint index = header.pop_active_portal();
                     PortalPixel0 p0 = PortalPixel0::decode_crt(_Portal_CRT, index);
                     if(!p0.is_enabled()) { break; }
                     Portal p = Portal::decode_crt(p0, _Portal_CRT, index);
-                    #else
+                #else
+                [loop]
+                for(uint index = 0; index < 32; index += 1) {
                     Portal p = Portal::decode_grabpass(_Lereldarion_Portal_System_GrabPass, index);
                     if(abs(dot(p.x_axis, p.y_axis)) > 0.01) { break; } // Count only provided to CRT, so here try to detect garbage values
-                    #endif
+                #endif
 
                     LineDrawer drawer = LineDrawer::init(hue_shift_yiq(half3(1, 0, 0), index / 14.0 * UNITY_TWO_PI));
                     stream.RestartStrip();
@@ -112,7 +116,7 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
 
                 #ifdef _PORTAL_DATA_SOURCE_CRT
                 // Cameras
-                for(index = 0; index < 2; index += 1) {
+                for(uint index = 0; index < 2; index += 1) {
                     Camera c = Camera::decode_crt(_Portal_CRT, index);
                     
                     // Only display camera position if not the current one.

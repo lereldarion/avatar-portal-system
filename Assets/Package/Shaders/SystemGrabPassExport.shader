@@ -16,6 +16,7 @@ Shader "Lereldarion/Portal/SystemGrabPassExport" {
             Name "Encode"
             ZTest Always
             ZWrite Off
+            Blend Off
 
             CGPROGRAM
             #pragma target 5.0
@@ -47,6 +48,14 @@ Shader "Lereldarion/Portal/SystemGrabPassExport" {
                 float4 position : SV_POSITION;
                 float4 data : DATA;
                 UNITY_VERTEX_OUTPUT_STEREO
+
+                static void emit(inout PointStream<PixelData> stream, uint2 coordinates, float data) {
+                    PixelData output;
+                    UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
+                    output.position = target_pixel_to_cs(coordinates, _ScreenParams.xy);
+                    output.data = data;
+                    stream.Append(output);
+                }
             };
             
             void vertex_stage (MeshData input, out WorldMeshData output) {

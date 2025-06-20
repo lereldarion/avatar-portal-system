@@ -2,23 +2,60 @@
 #define LERELDARION_PORTAL_CRT_H
 
 // CRT Encodings :
+// Header at (0, 0).
+// - x : u32 is a bitmask of active portals for fast scan.
+// - w : system is active
 // Camera pixels
 // - pixel = uint4 as float3(wpos.xyz), in_portal as bit0 of w.
-// - main camera as (0, 0), photo camera as (0, 1).
-// Portal `i` is encoded by 2 f32x4 pixels at (1+i, 0) and (1+i, 1)
-// - (1+i, 0) = uint4 as float4(wpos.xyz, w = radius^2)
-// - (1+i, 1) = x/y axis as f16x6 in u16x6 in u32x3. is_ellipse as bit0 in w.
+// - main camera as (0, 1), photo camera as (0, 2).
+// Portal `i` is encoded by 2 f32x4 pixels
+// - pixel0 at (1, i) = uint4 as float4(wpos.xyz, w = radius^2)
+// - pixel1 at (2, i) = x/y axis as f16x6 in u16x6 in u32x3. is_ellipse as bit0 in w.
 
-// Partial portal with data from pixel 0 of CRT.
-// Can provide a quick intersection test, to see if the precise test with data from pixel 1 is required.
+struct Header {
+    uint portal_mask;
+    bool is_enabled;
+
+    bool has_portals() { return portal_mask != 0x0; }
+    uint pop_active_portal() {
+        uint index = firstbitlow(portal_mask);
+        portal_mask ^= 0x1 << index; // Mask as seen
+        return index;
+    }
+
+    uint4 encode_crt() { return uint4(portal_mask, 0, 0, is_enabled ? 0x1 : 0x0); }
+    static Header decode_crt(uint4 pixel) { 
+        Header h;
+        h.portal_mask = pixel.r;
+        h.is_enabled = pixel.a & 0x1;
+        return h;
+    }
+    static Header decode_crt(Texture2D<uint4> crt) { return decode_crt(crt[uint2(0, 0)]); }
+};
+
+struct Camera {
+    float3 position;
+    bool in_portal; // Only present in CRT ; state of the camera.
+
+    uint4 encode_crt() { return uint4(asuint(position), in_portal ? 0x1 : 0x0) ; }
+    static Camera decode_crt(uint4 pixel) {
+        Camera c;
+        c.position = asfloat(pixel.rgb);
+        c.in_portal = pixel.a & 0x1;
+        return c;
+    }
+    static Camera decode_crt(Texture2D<uint4> crt, uint index) { return decode_crt(crt[uint2(0, 1 + index)]); }
+};
+
 struct PortalPixel0 {
+    // Partial portal with data from pixel 0 of CRT.
+    // Can provide a quick intersection test, to see if the precise test with data from pixel 1 is required.
     float3 position;
     float radius_sq;
 
     bool is_enabled() { return radius_sq > 0; }
     bool fast_intersect(float3 origin, float3 end);
 
-    static uint4 encode_disabled_crt() { return asuint(float4(0, 0, 0, 0)); }
     static PortalPixel0 decode_crt(uint4 pixel) {
         float4 pixel_fp = asfloat(pixel);
         PortalPixel0 o;
@@ -26,7 +63,7 @@ struct PortalPixel0 {
         o.radius_sq = pixel_fp.w;
         return o;
     }
-    static PortalPixel0 decode_crt(Texture2D<uint4> crt, uint index) { return decode_crt(crt[uint2(1 + index, 0)]); }
+    static PortalPixel0 decode_crt(Texture2D<uint4> crt, uint index) { return decode_crt(crt[uint2(1, index)]); }
 };
 
 struct Portal {
@@ -49,25 +86,11 @@ struct Portal {
     
     void encode_crt(out uint4 pixels[2]);
     static Portal decode_crt(PortalPixel0 pixel0, uint4 pixel1);
-    static Portal decode_crt(PortalPixel0 pixel0, Texture2D<uint4> crt, uint index) { return decode_crt(pixel0, crt[uint2(1 + index, 1)]); }
+    static Portal decode_crt(PortalPixel0 pixel0, Texture2D<uint4> crt, uint index) { return decode_crt(pixel0, crt[uint2(2, index)]); }
 
     void encode_grabpass(out float4 pixels[4]);
     static Portal decode_grabpass(float4 pixels[4]);
     static Portal decode_grabpass(Texture2D<float4> grabpass, uint index);
-};
-
-struct Camera {
-    float3 position;
-    bool in_portal; // Only present in CRT ; state of the camera.
-
-    uint4 encode_crt() { return uint4(asuint(position), in_portal ? 0x1 : 0x0) ; }
-    static Camera decode_crt(uint4 pixel) {
-        Camera c;
-        c.position = asfloat(pixel.rgb);
-        c.in_portal = pixel.a & 0x1;
-        return c;
-    }
-    static Camera decode_crt(Texture2D<uint4> crt, uint index) { return decode_crt(crt[uint2(0, index)]); }
 };
 
 ///////////////////////////////////////////////////////////////////////////

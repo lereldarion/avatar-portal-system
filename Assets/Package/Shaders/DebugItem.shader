@@ -4,9 +4,9 @@ Shader "Lereldarion/Portal/DebugItem" {
         _Color("Color", Color) = (1, 1, 1, 0)
 
         [Header(Portal)]
-        [ToggleUI] _Camera_In_Portal("Camera is in portal space", Float) = 0
-        _Item_Portal_State("Item portal state : 0=w,1=p,2+n=transiting_fwd,-2-n=transiting_back)", Integer) = 0
         [NoScaleOffset] _Portal_CRT("Portal CRT texture", 2D) = ""
+        _Item_Portal_State("Item portal state : 0=w,1=p,2+n=transiting_fwd,-2-n=transiting_back)", Integer) = 0
+        [ToggleUI] _Camera_In_Portal("Camera is in portal space", Float) = 0
     }
     SubShader {
         Tags {
@@ -52,10 +52,13 @@ Shader "Lereldarion/Portal/DebugItem" {
 
             uniform half4 _Color;
 
+            uniform float _VRChatCameraMode;
+
             half4 fragment_stage (FragmentData input) : SV_Target {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
 
-                bool portal_parity = _Camera_In_Portal;
+                Camera camera = Camera::decode_crt(_Portal_CRT, _VRChatCameraMode == 0 ? 0 : 1);
+                bool portal_parity = _Camera_In_Portal; // camera.in_portal; // FIXME Testing
                 bool in_portal_space = false;
 
                 uint transiting_portal_id = 1000; // Not tested

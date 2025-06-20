@@ -53,7 +53,6 @@ Shader "Lereldarion/Portal/CRT" {
             }
             
             uint4 fragment_stage (PixelData pixel) : SV_Target {
-                UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(pixel);
                 return pixel.data;
             }
 

@@ -80,8 +80,9 @@ Shader "Lereldarion/Portal/CRT" {
             bool is_camera_movement_valid(float3 from, float3 to) {
                 return any(from != 0) && any(to != 0) && is_movement_valid(from, to);
             }
-                        
-            [maxvertexcount(128)]
+            
+            // If we ever move to 64 portals, we will need to split this part, due to max of 128 emits.
+            [maxvertexcount(32 * 2 + 2 + 1)]
             void geometry_stage(point GeometryData input[1], uint primitive_id : SV_PrimitiveID, inout PointStream<PixelData> stream) {
                 // Compared to flexcrt we only want one thread that will scan all portals, so just get one iteration.
                 if(primitive_id != 0) { return; }
@@ -137,6 +138,5 @@ Shader "Lereldarion/Portal/CRT" {
             }
             ENDCG
         }
-
     }
 }

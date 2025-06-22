@@ -1,12 +1,8 @@
 using System.Linq;
 using System.Collections.Generic;
 using AnimatorAsCode.V1;
-using AnimatorAsCode.V1.VRC;
 using nadena.dev.ndmf;
 using UnityEngine;
-using VRC.SDK3.Dynamics.Constraint.Components;
-using VRC.SDK3.Dynamics.Contact.Components;
-using VRC.SDK3.Dynamics.PhysBone.Components;
 
 [assembly: ExportsPlugin(typeof(Lereldarion.Portal.GeneratePortalSystemPlugin))]
 

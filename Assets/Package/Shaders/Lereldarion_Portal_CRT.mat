@@ -24,7 +24,7 @@ Material:
     serializedVersion: 3
     m_TexEnvs: []
     m_Ints:
-    - _GrabPass_Portal_Count: 2
+    - _GrabPass_Portal_Count: 3
     m_Floats:
     - _Valid_Movement_Max_Distance: 1
     m_Colors: []

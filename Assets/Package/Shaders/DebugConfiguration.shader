@@ -122,7 +122,8 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
                     // Only display camera position if not the current one.
                     float s = 0.1;
                     if(distance(position, _WorldSpaceCameraPos) > s) {
-                        LineDrawer drawer = LineDrawer::init(float3(index == 0, index == 1, header.camera_in_portal[index]));
+                        bool in_portal = header.camera_in_portal[index];
+                        LineDrawer drawer = LineDrawer::init(float3(in_portal, !in_portal, 0));
                         stream.RestartStrip();
                         drawer.solid_ws(stream, position - float3(s, 0, 0));
                         drawer.solid_ws(stream, position + float3(s, 0, 0));

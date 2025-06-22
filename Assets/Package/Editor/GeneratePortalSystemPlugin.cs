@@ -33,10 +33,10 @@ namespace Lereldarion.Portal
                 ContainerMode = AacConfiguration.Container.OnlyWhenPersistenceRequired,
                 DefaultsProvider = new AacDefaultsProvider()
             });
-            var animator_controller = aac.NewAnimatorController();
             var animator_context = new AnimatorContext
             {
                 Aac = aac,
+                Controller = aac.NewAnimatorController(),
             };
 
             foreach (var system in ctx.AvatarRootTransform.GetComponentsInChildren<PortalSystem>(true))
@@ -47,7 +47,7 @@ namespace Lereldarion.Portal
 
             var ma_object = new GameObject("Portal_Animator") { transform = { parent = ctx.AvatarRootTransform } };
             var ma = AnimatorAsCode.V1.ModularAvatar.MaAc.Create(ma_object);
-            ma.NewMergeAnimator(animator_controller, VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX);
+            ma.NewMergeAnimator(animator_context.Controller, VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX);
         }
 
         /// <summary>
@@ -92,7 +92,7 @@ namespace Lereldarion.Portal
             // Scan portal system components
             var vertices = new List<SystemMeshVertex>();
             var context = new Context { Animator = animator, System = system, Vertices = vertices };
-            SetupBoundVertices(context);
+            SetupOcclusionBounds(context, renderer);
             SetupControlVertex(context);
             foreach (var portal in root.GetComponentsInChildren<QuadPortal>(true)) { SetupQuadPortal(portal, context); }
 
@@ -120,7 +120,7 @@ namespace Lereldarion.Portal
 
                 renderer.sharedMesh = mesh;
                 renderer.bones = bones;
-                renderer.material = system.GrabPassExport;
+                renderer.sharedMaterials = new Material[] { system.GrabPassExport, system.SealPortals };
             }
 
             // Set CRT parameters
@@ -140,12 +140,13 @@ namespace Lereldarion.Portal
         private class AnimatorContext
         {
             public AacFlBase Aac;
+            public AacFlController Controller;
 
             private int id = 0;
             public int UniqueId() { return id++; }
         }
 
-        private void SetupControlVertex(Context context)
+        private void SetupControlVertex(Context context) 
         {
             // Provide animator values to grabpass and then CRT
             // Other data is unused
@@ -162,9 +163,42 @@ namespace Lereldarion.Portal
         /// Creates vertices and animator used to setup occlusion bounds
         /// </summary>
         /// <param name="context">Data of the current portal system being built</param>
-        private void SetupBoundVertices(Context context)
+        private void SetupOcclusionBounds(Context context, SkinnedMeshRenderer renderer)
         {
-            // TODO create gameobject + vertex bound to it. Add animator init to check update on skinned mesh and move bounds.
+            Transform[] corners = new Transform[4];
+            for (int i = 0; i < 4; i += 1)
+            {
+                var corner = new GameObject($"Occlusion Corner {i}")
+                {
+                    transform = {
+                        parent = context.System.transform,
+                        position = context.System.transform.position,
+                    }
+                };
+                corners[i] = corner.transform;
+                context.Vertices.Add(new SystemMeshVertex
+                {
+                    transform = corner.transform,
+                    normal = Vector3.zero,
+                    tangent = Vector3.zero,
+                    uv0 = new Vector2((float)VertexType.Ignored, 0),
+                });
+            }
+            var layer = context.Animator.Controller.NewLayer("Occlusion Setup");
+            var clip = context.Animator.Aac.NewClip();
+
+            // 4 corners of a cube.
+            float size = context.System.OcclusionBoxSize;
+            clip.Positioning(corners[0], new Vector3( size,  size,  size));
+            clip.Positioning(corners[1], new Vector3(-size, -size,  size));
+            clip.Positioning(corners[2], new Vector3(-size,  size, -size));
+            clip.Positioning(corners[3], new Vector3( size, -size, -size));
+
+            // Force update bound on. Must be enabled by animator as VRChat disable them by default.
+            // https://github.com/pema99/shader-knowledge/blob/main/tips-and-tricks.md#update-when-offscreen-setting-for-skinned-mesh-renderer
+            clip.Animating(edit => edit.Animates(renderer, "m_UpdateWhenOffscreen").WithOneFrame(1));
+
+            layer.NewState("Setup").WithAnimation(clip);
         }
 
         /// <summary>

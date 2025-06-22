@@ -71,7 +71,11 @@ struct Portal {
     }
 
     bool is_enabled() { return radius_sq > 0; }
+    
+    bool is_plane_point_in_shape(float3 p);
     bool segment_intersect(float3 origin, float3 end);
+    static Portal lerp(Portal a, Portal b, float t);
+    static uint movement_intersect(Portal p0, Portal p1, float3 v0, float3 v1);
     
     void encode_crt(out uint4 pixels[2]);
     static Portal decode_crt(PortalPixel0 pixel0, uint4 pixel1);
@@ -84,11 +88,10 @@ struct Portal {
 
 ///////////////////////////////////////////////////////////////////////////
 
+// Check if line intersect portal approximated by a sphere. Does not check ray distance.
+// Fast and avoids loading the second pixel if rejected.
+// On success use the full portal segment intersect below.
 bool PortalPixel0::fast_intersect(float3 origin, float3 end) {
-    // Check if line intersect portal approximated by a sphere. Does not check ray distance.
-    // Fast and avoids loading the second pixel if rejected.
-    // On success use the full portal segment intersect below.
-
     float3 ray = end - origin;
     float3 portal_v = position - origin;
 
@@ -96,17 +99,9 @@ bool PortalPixel0::fast_intersect(float3 origin, float3 end) {
     return dot(projection, projection) <= radius_sq;
 }
 
-bool Portal::segment_intersect(float3 origin, float3 end) {
-    // Note that we do not have to normalize normal, ray, or x/y axis at all.
-    float3 ray = end - origin;
-    // portal plane equation dot(p - position, normal) = 0
-    // ray line p(t) = origin + ray * t
-    float t = dot(position - origin, normal) / dot(ray, normal);
-    // t in [0, 1] <=> intersect point between [origin, end].
-    if(!all(t == saturate(t))) { return false; }
-    float3 intersect = origin + ray * t;
-    // Test if we are within the portal shape
-    float3 v = intersect - position;
+// Assuming p is within the plane of the portal, do the precise shape test.
+bool Portal::is_plane_point_in_shape(float3 p) {
+    float3 v = p - position;
     float2 axis_projections = float2(dot(x_axis, v), dot(y_axis, v));
     float2 axis_length_sq = float2(dot(x_axis, x_axis), dot(y_axis, y_axis));
     if(is_ellipse) {
@@ -116,6 +111,85 @@ bool Portal::segment_intersect(float3 origin, float3 end) {
         return all(abs(axis_projections) <= axis_length_sq);
     }
 }
+
+// Does segment intersects portal precise surface (with its shape).
+bool Portal::segment_intersect(float3 origin, float3 end) {
+    // Note that we do not have to normalize normal, ray, or x/y axis at all.
+    float3 ray = end - origin;
+    // portal plane equation dot(p - position, normal) = 0
+    // ray line p(t) = origin + ray * t
+    float t = dot(position - origin, normal) / dot(ray, normal);
+    // t in [0, 1] <=> intersect point between [origin, end].
+    if(t == saturate(t)) {
+        return is_plane_point_in_shape(origin + ray * t);
+    } else {
+        return false;
+    }
+}
+
+static Portal Portal::lerp(Portal a, Portal b, float t) {
+    Portal interpolated;
+    interpolated.position = lerp(a.position, b.position, t);
+    interpolated.x_axis = lerp(a.x_axis, b.x_axis, t);
+    interpolated.y_axis = lerp(a.y_axis, b.y_axis, t);
+    interpolated.is_ellipse = a.is_ellipse;
+    interpolated.finalize();
+    return interpolated;
+}
+
+// Assuming portal moves (lerp) from p0 to p1 and a point from v0 to v1,
+// how many times does the point crosses the portal surface ? 0 to 2.
+// Shape is assumed constant.
+static uint Portal::movement_intersect(Portal p0, Portal p1, float3 v0, float3 v1) {
+    // For 0 <= t <= 1 lerp coefficient
+    // Interpolated point : v(t) = lerp(v0, v1, t) = v0 (1-t) + v1 t
+    // Plane equation of interpolated portal : dot(v(t) - (p0 (1-t) + p1 t), n0 (1-t) + n1 t) = 0
+    // Strategy is to first find t with plane intersects, restrict to solutions with t in [0,1], and check shape intersect at t.
+    float3 pv0 = v0 - p0.position;
+    float3 pv1 = v1 - p1.position;
+    float dot_pv0_n0 = dot(pv0, p0.normal);
+    float dot_pv0_n1 = dot(pv0, p1.normal);
+    float dot_pv1_n0 = dot(pv1, p0.normal);
+    float dot_pv1_n1 = dot(pv1, p1.normal);
+    float mixed_dots = dot_pv0_n1 + dot_pv1_n0;
+    // Plane intersect t are solution of the 2nd order equation a t^2 + b t + c = 0 with
+    float a = dot_pv0_n0 + dot_pv1_n1 - mixed_dots;
+    float b = mixed_dots - 2 * dot_pv0_n0;
+    float c = dot_pv0_n0;
+    if(a == 0) {
+        // degree 1 equation, very common in desktop if some of the entities do not move (n, p, v)
+        float t = -c/b;
+        if(t == saturate(t)) {
+            // t in [0, 1]. Also checked that b != 0, as t would be +/-inf
+            Portal interpolated = Portal::lerp(p0, p1, t);
+            return interpolated.is_plane_point_in_shape(lerp(v0, v1, t)) ? 1 : 0;
+        } else {
+            return 0;
+        }
+    } else {
+        // Full quadratic equation
+        float b2_m_4ac = mixed_dots * mixed_dots - 4 * dot_pv0_n0 * dot_pv1_n1;
+        if(b2_m_4ac <= 0) {
+            // No solutions
+            // Also ignore corner case of b2_m_4ac=0 with only one solution, unlikely to have exactly 0.
+            return 0;
+        }
+        float2 t_candidates = (-b + float2(-1, 1) * sqrt(b2_m_4ac)) / (2 * a);
+        // Scan both solutions
+        uint intersect_count = 0;
+        [unroll]
+        for(uint i = 0; i < 2; i += 1) {
+            float t = t_candidates[i];
+            if(t == saturate(t)) {
+                // t in [0, 1]    
+                Portal interpolated = Portal::lerp(p0, p1, t);
+                intersect_count += interpolated.is_plane_point_in_shape(lerp(v0, v1, t)) ? 1 : 0;
+            }
+        }
+        return intersect_count;
+    }
+}
+
 
 ///////////////////////////////////////////////////////////////////////////
 // CRT encodings

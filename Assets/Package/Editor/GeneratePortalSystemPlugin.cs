@@ -60,8 +60,8 @@ namespace Lereldarion.Portal
         {
             /// <summary>Position, bone assignment.</summary>
             public Transform transform;
-            public Vector3 normal;
-            public Vector3 tangent;
+            public Vector3 normal = Vector3.zero;
+            public Vector3 tangent = Vector3.zero;
             /// <summary>
             /// x is the type of object. See VertexType.
             /// </summary>
@@ -108,15 +108,21 @@ namespace Lereldarion.Portal
                 mesh.SetUVs(0, vertices.Select(vertex => vertex.uv0).ToArray());
                 mesh.SetIndices(Enumerable.Range(0, vertices.Count()).ToArray(), MeshTopology.Points, 0);
 
-                Transform[] bones = vertices.Select(vertex => vertex.transform).ToArray();
-                mesh.boneWeights = Enumerable.Range(0, vertices.Count()).Select(i =>
+                // Merge identical transforms
+                Transform[] bones = vertices.Select(vertex => vertex.transform).Distinct().ToArray();
+                mesh.bindposes = bones.Select(bone => bone.worldToLocalMatrix * root.localToWorldMatrix).ToArray();
+
+                var bone_to_bone_id = new Dictionary<Transform, int>();
+                for (int i = 0; i < bones.Length; i += 1) {
+                    bone_to_bone_id.Add(bones[i], i);
+                }
+                mesh.boneWeights = vertices.Select(vertex =>
                 {
                     var bw = new BoneWeight();
-                    bw.boneIndex0 = i;
+                    bw.boneIndex0 = bone_to_bone_id[vertex.transform];
                     bw.weight0 = 1;
                     return bw;
                 }).ToArray();
-                mesh.bindposes = bones.Select(bone => bone.worldToLocalMatrix * root.localToWorldMatrix).ToArray();
 
                 renderer.sharedMesh = mesh;
                 renderer.bones = bones;
@@ -153,8 +159,6 @@ namespace Lereldarion.Portal
             context.Vertices.Add(new SystemMeshVertex
             {
                 transform = context.System.transform,
-                normal = new Vector3(0, 0, 0),
-                tangent = new Vector3(0, 0, 0),
                 uv0 = new Vector2((float) VertexType.Control, 0),
             });
         }
@@ -179,15 +183,13 @@ namespace Lereldarion.Portal
                 context.Vertices.Add(new SystemMeshVertex
                 {
                     transform = corner.transform,
-                    normal = Vector3.zero,
-                    tangent = Vector3.zero,
                     uv0 = new Vector2((float)VertexType.Ignored, 0),
                 });
             }
             var layer = context.Animator.Controller.NewLayer("Occlusion Setup");
             var clip = context.Animator.Aac.NewClip();
 
-            // 4 corners of a cube.
+            // 4 corners of a cube. FIXME is this actually needed ? Check after the system is 
             float size = context.System.OcclusionBoxSize;
             clip.Positioning(corners[0], new Vector3( size,  size,  size));
             clip.Positioning(corners[1], new Vector3(-size, -size,  size));

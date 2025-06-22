@@ -78,7 +78,7 @@ Shader "Lereldarion/Portal/CRT" {
                 // TODO use max speed with deltatime
             }
             bool is_camera_movement_valid(float3 from, float3 to) {
-                return all(from != 0 && to != 0) && is_movement_valid(from, to);
+                return any(from != 0) && any(to != 0) && is_movement_valid(from, to);
             }
                         
             [maxvertexcount(128)]

@@ -156,38 +156,32 @@ static uint Portal::movement_intersect(Portal p0, Portal p1, float3 v0, float3 v
     float a = dot_pv0_n0 + dot_pv1_n1 - mixed_dots;
     float b = mixed_dots - 2 * dot_pv0_n0;
     float c = dot_pv0_n0;
+    // Gather t candidates
+    float2 t_candidates = float2(-1, -1); // Invalid solutions
     if(a == 0) {
         // degree 1 equation, very common in desktop if some of the entities do not move (n, p, v)
-        float t = -c/b;
-        if(t == saturate(t)) {
-            // t in [0, 1]. Also checked that b != 0, as t would be +/-inf
-            Portal interpolated = Portal::lerp(p0, p1, t);
-            return interpolated.is_plane_point_in_shape(lerp(v0, v1, t)) ? 1 : 0;
-        } else {
-            return 0;
-        }
+        t_candidates[0] = -c / b;
     } else {
         // Full quadratic equation
-        float b2_m_4ac = mixed_dots * mixed_dots - 4 * dot_pv0_n0 * dot_pv1_n1;
-        if(b2_m_4ac <= 0) {
-            // No solutions
-            // Also ignore corner case of b2_m_4ac=0 with only one solution, unlikely to have exactly 0.
-            return 0;
+        float b2_m_4ac = mixed_dots * mixed_dots - 4 * dot_pv0_n0 * dot_pv1_n1; // Simpler expression with lots of cancellations applied.
+        if(b2_m_4ac == 0) {
+            t_candidates[0] = -b / (2 * a);
+        } else if(b2_m_4ac > 0) {
+            t_candidates = (-b + float2(-1, 1) * sqrt(b2_m_4ac)) / (2 * a);
         }
-        float2 t_candidates = (-b + float2(-1, 1) * sqrt(b2_m_4ac)) / (2 * a);
-        // Scan both solutions
-        uint intersect_count = 0;
-        [unroll]
-        for(uint i = 0; i < 2; i += 1) {
-            float t = t_candidates[i];
-            if(t == saturate(t)) {
-                // t in [0, 1]    
-                Portal interpolated = Portal::lerp(p0, p1, t);
-                intersect_count += interpolated.is_plane_point_in_shape(lerp(v0, v1, t)) ? 1 : 0;
-            }
-        }
-        return intersect_count;
     }
+    // Scan both solutions
+    uint intersect_count = 0;
+    [unroll]
+    for(uint i = 0; i < 2; i += 1) {
+        float t = t_candidates[i];
+        if(t == saturate(t)) {
+            // t in [0, 1]    
+            Portal interpolated = Portal::lerp(p0, p1, t);
+            intersect_count += interpolated.is_plane_point_in_shape(lerp(v0, v1, t)) ? 1 : 0;
+        }
+    }
+    return intersect_count;
 }
 
 

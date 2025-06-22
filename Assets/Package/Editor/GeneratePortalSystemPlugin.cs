@@ -56,10 +56,12 @@ namespace Lereldarion.Portal
         /// 
         /// Portal : encode XY direction and lengths into normal / tangent.
         /// </summary>
-        private class SystemMeshVertex
+        private class Vertex
         {
             /// <summary>Position, bone assignment.</summary>
             public Transform transform;
+            /// <summary>Override for position within transform</summary>
+            public Vector3 localPosition = Vector3.zero;
             public Vector3 normal = Vector3.zero;
             public Vector3 tangent = Vector3.zero;
             /// <summary>
@@ -90,7 +92,7 @@ namespace Lereldarion.Portal
             SkinnedMeshRenderer renderer = root.gameObject.AddComponent<SkinnedMeshRenderer>();
 
             // Scan portal system components
-            var vertices = new List<SystemMeshVertex>();
+            var vertices = new List<Vertex>();
             var context = new Context { Animator = animator, System = system, Vertices = vertices };
             SetupOcclusionBounds(context, renderer);
             SetupControlVertex(context);
@@ -98,7 +100,7 @@ namespace Lereldarion.Portal
 
             // Make skinned mesh
             {
-                mesh.vertices = vertices.Select(vertex => root.InverseTransformPoint(vertex.transform.position)).ToArray();
+                mesh.vertices = vertices.Select(vertex => root.InverseTransformPoint(vertex.transform.TransformPoint(vertex.localPosition))).ToArray();
                 mesh.SetNormals(vertices.Select(vertex => root.InverseTransformVector(vertex.transform.TransformVector(vertex.normal))).ToArray());
                 mesh.SetTangents(vertices.Select(vertex =>
                 {
@@ -140,7 +142,7 @@ namespace Lereldarion.Portal
         {
             public AnimatorContext Animator;
             public PortalSystem System;
-            public List<SystemMeshVertex> Vertices;
+            public List<Vertex> Vertices;
             public int PortalCount = 0;
         }
         private class AnimatorContext
@@ -156,7 +158,7 @@ namespace Lereldarion.Portal
         {
             // Provide animator values to grabpass and then CRT
             // Other data is unused
-            context.Vertices.Add(new SystemMeshVertex
+            context.Vertices.Add(new Vertex
             {
                 transform = context.System.transform,
                 uv0 = new Vector2((float) VertexType.Control, 0),
@@ -169,32 +171,10 @@ namespace Lereldarion.Portal
         /// <param name="context">Data of the current portal system being built</param>
         private void SetupOcclusionBounds(Context context, SkinnedMeshRenderer renderer)
         {
-            Transform[] corners = new Transform[4];
-            for (int i = 0; i < 4; i += 1)
-            {
-                var corner = new GameObject($"Occlusion Corner {i}")
-                {
-                    transform = {
-                        parent = context.System.transform,
-                        position = context.System.transform.position,
-                    }
-                };
-                corners[i] = corner.transform;
-                context.Vertices.Add(new SystemMeshVertex
-                {
-                    transform = corner.transform,
-                    uv0 = new Vector2((float)VertexType.Ignored, 0),
-                });
-            }
             var layer = context.Animator.Controller.NewLayer("Occlusion Setup");
             var clip = context.Animator.Aac.NewClip();
 
-            // 4 corners of a cube. FIXME is this actually needed ? Check after the system is 
-            float size = context.System.OcclusionBoxSize;
-            clip.Positioning(corners[0], new Vector3( size,  size,  size));
-            clip.Positioning(corners[1], new Vector3(-size, -size,  size));
-            clip.Positioning(corners[2], new Vector3(-size,  size, -size));
-            clip.Positioning(corners[3], new Vector3( size, -size, -size));
+            // TODO occlusion vertices on portal meshes ?
 
             // Force update bound on. Must be enabled by animator as VRChat disable them by default.
             // https://github.com/pema99/shader-knowledge/blob/main/tips-and-tricks.md#update-when-offscreen-setting-for-skinned-mesh-renderer
@@ -213,13 +193,24 @@ namespace Lereldarion.Portal
             VertexType vertex_type = portal.Shape == QuadPortal.ShapeType.Rectangle ? VertexType.QuadPortal : VertexType.EllipsePortal;
             int portal_id = context.PortalCount; context.PortalCount += 1;
 
-            context.Vertices.Add(new SystemMeshVertex
+            context.Vertices.Add(new Vertex
             {
                 transform = portal.transform,
                 normal = new Vector3(portal.Size.x, 0, 0),
                 tangent = new Vector3(0, portal.Size.y, 0),
                 uv0 = new Vector2((float)vertex_type, (float)portal_id),
             });
+
+            // Add vertices at 4 corners to force occlusion bound
+            for (int i = 0; i < 4; i += 1)
+            {
+                context.Vertices.Add(new Vertex
+                {
+                    transform = portal.transform,
+                    localPosition = new Vector3(i % 2 == 0 ? -portal.Size.x : portal.Size.x, i < 2 ? -portal.Size.y : portal.Size.y, 0),
+                    uv0 = new Vector2((float) VertexType.Ignored, 0),
+                });
+            }
 
             Object.DestroyImmediate(portal); // Cleanup components
         }

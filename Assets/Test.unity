@@ -258,6 +258,14 @@ PrefabInstance:
         type: 3}
       insertIndex: -1
       addedObject: {fileID: 78128593}
+    - targetCorrespondingSourceObject: {fileID: -235860901620994196, guid: f81e8172c337a714894d6fdbd0900d8d,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1264308546}
+    - targetCorrespondingSourceObject: {fileID: 6838353376897876271, guid: f81e8172c337a714894d6fdbd0900d8d,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1900401522}
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: f81e8172c337a714894d6fdbd0900d8d,
         type: 3}
@@ -617,8 +625,9 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 196637901}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.000000029802326, y: 0.000000029802326, z: 0, w: 1}
-  m_LocalPosition: {x: -0.00000011920929, y: 0, z: 0.000000029802322}
+  m_LocalRotation: {x: 0.000000044703473, y: 0.000000029802315, z: 0.000000044703473,
+    w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -685,15 +694,15 @@ MonoBehaviour:
   Locked: 1
   Sources:
     source0:
-      SourceTransform: {fileID: 2143549290}
+      SourceTransform: {fileID: 1900401522}
       Weight: 1
-      ParentPositionOffset: {x: -0.000000044703484, y: 0.2980001, z: -0.00000017881393}
-      ParentRotationOffset: {x: -90, y: 90, z: 0}
+      ParentPositionOffset: {x: 0, y: 0, z: 0}
+      ParentRotationOffset: {x: 0, y: 0, z: 0}
     source1:
       SourceTransform: {fileID: 662350342}
       Weight: 0
-      ParentPositionOffset: {x: -0.000000044703484, y: 0.2980001, z: -0.00000017881393}
-      ParentRotationOffset: {x: -90, y: 90, z: 0}
+      ParentPositionOffset: {x: 0, y: 0, z: 0}
+      ParentRotationOffset: {x: 0, y: 0, z: 0}
     source2:
       SourceTransform: {fileID: 0}
       Weight: 0
@@ -768,11 +777,11 @@ MonoBehaviour:
     overflowList: []
   cachedExecutionGroupIndex: 1
   latestValidExecutionGroupIndex: 1
-  PositionAtRest: {x: 1.0803862, y: 1.4555123, z: -0.08479178}
+  PositionAtRest: {x: 0, y: 0, z: 0}
   AffectsPositionX: 1
   AffectsPositionY: 1
   AffectsPositionZ: 1
-  RotationAtRest: {x: -0.0005566604, y: 89.999825, z: -89.99945}
+  RotationAtRest: {x: 0, y: 0, z: 0}
   AffectsRotationX: 1
   AffectsRotationY: 1
   AffectsRotationZ: 1
@@ -809,9 +818,9 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 273219516}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.000000029802322, y: -0.000000029802322, z: 0.000000029802322,
+  m_LocalRotation: {x: 0.000000014901159, y: 0.000000014901159, z: -0.000000044703476,
     w: 1}
-  m_LocalPosition: {x: 0.00000011920929, y: 0, z: -0.000000029802322}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -878,15 +887,15 @@ MonoBehaviour:
   Locked: 1
   Sources:
     source0:
-      SourceTransform: {fileID: 1500714520}
+      SourceTransform: {fileID: 1264308546}
       Weight: 1
-      ParentPositionOffset: {x: 0.00000040233135, y: 0.26361406, z: -0.000000923872}
-      ParentRotationOffset: {x: -90, y: -90, z: 0}
+      ParentPositionOffset: {x: 0, y: 0, z: 0}
+      ParentRotationOffset: {x: 0, y: 0, z: 0}
     source1:
       SourceTransform: {fileID: 946374777}
       Weight: 0
-      ParentPositionOffset: {x: 0.00000040233135, y: 0.26361406, z: -0.000000923872}
-      ParentRotationOffset: {x: -90, y: -90, z: 0}
+      ParentPositionOffset: {x: 0, y: 0, z: 0}
+      ParentRotationOffset: {x: 0, y: 0, z: 0}
     source2:
       SourceTransform: {fileID: 0}
       Weight: 0
@@ -961,11 +970,11 @@ MonoBehaviour:
     overflowList: []
   cachedExecutionGroupIndex: 1
   latestValidExecutionGroupIndex: 1
-  PositionAtRest: {x: -1.046, y: 1.455509, z: -0.084792495}
+  PositionAtRest: {x: 0, y: 0, z: 0}
   AffectsPositionX: 1
   AffectsPositionY: 1
   AffectsPositionZ: 1
-  RotationAtRest: {x: -0, y: -90, z: 90}
+  RotationAtRest: {x: 0, y: 0, z: -0}
   AffectsRotationX: 1
   AffectsRotationY: 1
   AffectsRotationZ: 1
@@ -1012,8 +1021,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 662350341}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.49999928, y: 0.49999925, z: -0.49999592, w: 0.50000554}
-  m_LocalPosition: {x: 1.0803862, y: 1.4555123, z: -0.08479176}
+  m_LocalRotation: {x: -0.49999928, y: 0.49999937, z: -0.4999958, w: 0.50000554}
+  m_LocalPosition: {x: 1.0803862, y: 1.4555123, z: -0.08479166}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -1041,10 +1050,10 @@ MonoBehaviour:
   Locked: 1
   Sources:
     source0:
-      SourceTransform: {fileID: 2143549290}
+      SourceTransform: {fileID: 1900401522}
       Weight: 1
-      ParentPositionOffset: {x: -0.000000029802322, y: 0.29800007, z: -0.00000023841858}
-      ParentRotationOffset: {x: -90, y: 90, z: 0}
+      ParentPositionOffset: {x: 0, y: 0, z: 0}
+      ParentRotationOffset: {x: 0, y: 0, z: 0}
     source1:
       SourceTransform: {fileID: 0}
       Weight: 0
@@ -1124,11 +1133,11 @@ MonoBehaviour:
     overflowList: []
   cachedExecutionGroupIndex: 0
   latestValidExecutionGroupIndex: 0
-  PositionAtRest: {x: 1.0803862, y: 1.4555123, z: -0.08479177}
+  PositionAtRest: {x: 1.0803862, y: 1.4555123, z: -0.08479166}
   AffectsPositionX: 1
   AffectsPositionY: 1
   AffectsPositionZ: 1
-  RotationAtRest: {x: -0.0005532453, y: 89.99983, z: -89.99945}
+  RotationAtRest: {x: -0.0005532453, y: 89.99985, z: -89.99945}
   AffectsRotationX: 1
   AffectsRotationY: 1
   AffectsRotationZ: 1
@@ -1181,8 +1190,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 946374776}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.49999946, y: -0.4999998, z: 0.49999824, w: 0.5000025}
-  m_LocalPosition: {x: -1.046, y: 1.455509, z: -0.084792465}
+  m_LocalRotation: {x: -0.49999958, y: -0.49999985, z: 0.49999824, w: 0.5000024}
+  m_LocalPosition: {x: -1.046, y: 1.4555099, z: -0.08479202}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -1210,10 +1219,10 @@ MonoBehaviour:
   Locked: 1
   Sources:
     source0:
-      SourceTransform: {fileID: 1500714520}
+      SourceTransform: {fileID: 1264308546}
       Weight: 1
-      ParentPositionOffset: {x: 0.0000003874302, y: 0.26361406, z: -0.0000009536743}
-      ParentRotationOffset: {x: -90, y: -90, z: 0}
+      ParentPositionOffset: {x: 0, y: 0, z: 0}
+      ParentRotationOffset: {x: 0, y: 0, z: 0}
     source1:
       SourceTransform: {fileID: 0}
       Weight: 0
@@ -1293,11 +1302,11 @@ MonoBehaviour:
     overflowList: []
   cachedExecutionGroupIndex: 0
   latestValidExecutionGroupIndex: 0
-  PositionAtRest: {x: -1.046, y: 1.455509, z: -0.08479248}
+  PositionAtRest: {x: -1.046, y: 1.4555099, z: -0.08479202}
   AffectsPositionX: 1
   AffectsPositionY: 1
   AffectsPositionZ: 1
-  RotationAtRest: {x: -0.00022539624, y: -90, z: 89.99974}
+  RotationAtRest: {x: -0.00022198116, y: -90, z: 89.99975}
   AffectsRotationX: 1
   AffectsRotationY: 1
   AffectsRotationZ: 1
@@ -1313,6 +1322,37 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 187105561}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1264308545
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1264308546}
+  m_Layer: 0
+  m_Name: Anchor
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1264308546
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1264308545}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0.5000001, y: -0.4999999, z: -0.50000006, w: 0.4999999}
+  m_LocalPosition: {x: 0, y: 0.2636142, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1500714520}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!4 &1282197553 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8211682993464967936, guid: f81e8172c337a714894d6fdbd0900d8d,
@@ -1869,6 +1909,37 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1900401521
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1900401522}
+  m_Layer: 0
+  m_Name: Anchor
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1900401522
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1900401521}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0.5, y: 0.50000006, z: 0.5000002, w: 0.49999988}
+  m_LocalPosition: {x: 0, y: 0.29800007, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2143549290}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1975532963
 GameObject:

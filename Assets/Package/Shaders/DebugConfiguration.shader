@@ -97,7 +97,7 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
                     if(abs(dot(p.x_axis, p.y_axis)) > 0.01) { break; } // Count only provided to CRT, so here try to detect garbage values
                 #endif
 
-                    LineDrawer drawer = LineDrawer::init(hue_shift_yiq(half3(1, 0, 0), index / 14.0 * UNITY_TWO_PI));
+                    LineDrawer drawer = LineDrawer::init(hue_shift_yiq(half3(1, 0, 0), index / 8.0 * UNITY_TWO_PI));
                     stream.RestartStrip();
                     if(!p.is_ellipse) {
                         drawer.solid_ws(stream, p.position - p.x_axis - p.y_axis);

@@ -152,7 +152,7 @@ namespace Lereldarion
                     .Animating(edit =>
                     {
                         for (int i = 0; i < portal.Sources.Count; i += 1) {
-                            edit.Animates(portal, $"Sources.source{i}.Weight").WithSecondsUnit(curve => curve.Linear(0f, i == 0 ? 1 : 0).Linear(0.3f, i == 0 ? 0 : 1));
+                            edit.Animates(portal, $"Sources.source{i}.Weight").WithSecondsUnit(curve => curve.Linear(0f, i == 0 ? 0 : 1).Linear(0.3f, i == 0 ? 1 : 0));
                         }
                     })
                 );

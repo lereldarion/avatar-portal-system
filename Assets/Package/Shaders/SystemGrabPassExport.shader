@@ -95,7 +95,6 @@ Shader "Lereldarion/Portal/SystemGrabPassExport" {
                         portal.x_axis = input.normal;
                         portal.y_axis = input.tangent;
                         portal.is_ellipse = vertex_type == 3;
-                        portal.finalize();
                         uint portal_id = input.uv0.y;
 
                         float4 pixels[4];

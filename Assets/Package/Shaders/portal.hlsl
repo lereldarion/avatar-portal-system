@@ -24,7 +24,6 @@ struct Header {
         return index;
     }
 
-    static uint4 encode_disabled_crt() { return uint4(0, 0, 0, 0); }
     uint4 encode_crt();
     static Header decode_crt(uint4 pixel);
     static Header decode_crt(Texture2D<uint4> crt) { return decode_crt(crt[uint2(0, 0)]); }
@@ -79,7 +78,9 @@ struct Portal {
     
     void encode_crt(out uint4 pixels[2]);
     static Portal decode_crt(PortalPixel0 pixel0, uint4 pixel1);
+    static Portal decode_crt(uint4 pixels[2]) { return decode_crt(PortalPixel0::decode_crt(pixels[0]), pixels[1]); }
     static Portal decode_crt(PortalPixel0 pixel0, Texture2D<uint4> crt, uint index) { return decode_crt(pixel0, crt[uint2(2, index)]); }
+    static Portal decode_crt(Texture2D<uint4> crt, uint index) { return decode_crt(PortalPixel0::decode_crt(crt, index), crt, index); }
 
     void encode_grabpass(out float4 pixels[4]);
     static Portal decode_grabpass(float4 pixels[4]);

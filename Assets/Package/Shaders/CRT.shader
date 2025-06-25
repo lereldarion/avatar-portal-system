@@ -17,9 +17,12 @@ Shader "Lereldarion/Portal/CRT" {
             // Compact portal positions into 2 f32x4 per portal.
             // Use the flexcrt strategy (cnlohr) : geometry pass to blit at interesting places
             // https://github.com/cnlohr/flexcrt/blob/master/Assets/flexcrt_demo/ExampleFlexCRT.shader#L78
-            // Also update the camera states
+            //
+            // Update the camera states
+            //
+            // TODO Update portal probe states
 
-            Name "Process Portal configuration"
+            Name "Update Portal Configuration"
 
             CGPROGRAM
             #pragma target 5.0
@@ -77,64 +80,96 @@ Shader "Lereldarion/Portal/CRT" {
                 return dot(movement, movement) < _Valid_Movement_Max_Distance * _Valid_Movement_Max_Distance;
                 // TODO use max speed with deltatime
             }
-            bool is_camera_movement_valid(float3 from, float3 to) {
-                return any(from != 0) && any(to != 0) && is_movement_valid(from, to);
-            }
             
             // If we ever move to 64 portals, we will need to split this part, due to max of 128 emits.
-            [maxvertexcount(32 * 2 + 2 + 1)]
-            void geometry_stage(point GeometryData input[1], uint primitive_id : SV_PrimitiveID, inout PointStream<PixelData> stream) {
-                // Compared to flexcrt we only want one thread that will scan all portals, so just get one iteration.
+            [instance(32)] // One per horizontal line
+            [maxvertexcount(32)]
+            void geometry_stage(point GeometryData input[1], uint primitive_id : SV_PrimitiveID, uint instance : SV_GSInstanceID, inout PointStream<PixelData> stream) {
+                // One iteration
                 if(primitive_id != 0) { return; }
 
+                // Max supported size for now, safety against bad value
+                _GrabPass_Portal_Count = min(_GrabPass_Portal_Count, 32);
+
                 Control control = Control::decode_grabpass(_Lereldarion_Portal_System_GrabPass);
-                if(!control.system_valid) {
-                    PixelData::emit(stream, uint2(0, 0), Header::encode_disabled_crt());
-                    return;
+
+                // When system is disabled (control mesh toggled off) or not working :
+                // Do not update status of objects.
+                // Reset camera state.
+
+                Header new_header;
+                new_header.portal_mask = 0x0;
+                new_header.is_enabled = false;
+                new_header.camera_in_portal[0] = false;
+                new_header.camera_in_portal[1] = false;
+                
+                // Always update camera positions
+                float3 new_camera_pos[2] = { _VRChatScreenCameraPos, _VRChatPhotoCameraPos };
+                if(instance < 2) {
+                    PixelData::emit(stream, uint2(0, 1 + instance), CameraPosition::encode_crt(new_camera_pos[instance]));
                 }
 
-                Header header = Header::decode_crt(_SelfTexture2D); // Retrieve camera state
-                header.portal_mask = 0x0;
-                header.is_enabled = true;
-                
-                float3 camera_pos[2] = { CameraPosition::decode_crt(_SelfTexture2D, 0), CameraPosition::decode_crt(_SelfTexture2D, 1) };
-                float3 new_camera_pos[2] = { _VRChatScreenCameraPos, _VRChatPhotoCameraPos };
-                PixelData::emit(stream, uint2(0, 1), CameraPosition::encode_crt(new_camera_pos[0]));
-                PixelData::emit(stream, uint2(0, 2), CameraPosition::encode_crt(new_camera_pos[1]));
-                bool camera_movement_valid[2] = {
-                    is_camera_movement_valid(camera_pos[0], new_camera_pos[0]),
-                    is_camera_movement_valid(camera_pos[1], new_camera_pos[1]),
-                };
+                if(control.system_valid) {
+                    new_header.is_enabled = true;
+                    Header old_header = Header::decode_crt(_SelfTexture2D);
+                    new_header.camera_in_portal = old_header.camera_in_portal;
 
-                _GrabPass_Portal_Count = min(_GrabPass_Portal_Count, 32); // Max supported size for now, safety against bad value
-                [loop]
-                for(uint index = 0; index < _GrabPass_Portal_Count; index += 1) {
-                    // Convert from grabpass to CRT. Always output to set its new state for other passes.
-                    Portal new_portal = Portal::decode_grabpass(_Lereldarion_Portal_System_GrabPass, index);
-                    uint4 pixels[2];
-                    new_portal.encode_crt(pixels);
-                    PixelData::emit(stream, uint2(1, index), pixels[0]);
-                    PixelData::emit(stream, uint2(2, index), pixels[1]);
+                    uint4 new_portal_pixels[32][2]; // Store encoded portal config for later queries : camera, probe states
+                    uint portals_with_valid_movement = 0x0;
 
-                    if(new_portal.is_enabled()) {
-                        header.portal_mask |= 0x1 << index;
+                    // Every thread will load the full old and new portal info and build the portal mask.
+                    [loop] for(uint index = 0; index < _GrabPass_Portal_Count; index += 1) {
+                        Portal new_portal = Portal::decode_grabpass(_Lereldarion_Portal_System_GrabPass, index);
+                        new_portal.encode_crt(new_portal_pixels[index]);
+                        
+                        if(new_portal.is_enabled()) {
+                            uint bit = 0x1 << index;
+                            new_header.portal_mask |= bit;
 
-                        // Update camera portal state
-                        PortalPixel0 portal_pixel0 = PortalPixel0::decode_crt(_SelfTexture2D, index);
-                        if(portal_pixel0.is_enabled() && is_movement_valid(portal_pixel0.position, new_portal.position)) {
-                            Portal portal = Portal::decode_crt(portal_pixel0, _SelfTexture2D, index);
+                            PortalPixel0 old_portal = PortalPixel0::decode_crt(_SelfTexture2D, index);
+                            if(old_portal.is_enabled() && is_movement_valid(old_portal.position, new_portal.position)) {
+                                portals_with_valid_movement |= bit;
+                            }
+                        }
+                    }
 
-                            [unroll]
-                            for(uint i = 0; i < 2; i += 1) {
-                                if(camera_movement_valid[i] && Portal::movement_intersect(portal, new_portal, camera_pos[i], new_camera_pos[i]) & 0x1) {
-                                    header.camera_in_portal[i] = !header.camera_in_portal[i];
+                    // Output instance new portal data
+                    if(instance < _GrabPass_Portal_Count) {
+                        PixelData::emit(stream, uint2(1, instance), new_portal_pixels[instance][0]);
+                        PixelData::emit(stream, uint2(2, instance), new_portal_pixels[instance][1]);
+                    }
+
+                    // Camera state update only for thread 0, which will write the header.
+                    if(instance == 0) {
+                        float3 old_camera_pos[2] = { CameraPosition::decode_crt(_SelfTexture2D, 0), CameraPosition::decode_crt(_SelfTexture2D, 1) };
+                        bool update_camera[2] = {
+                            is_movement_valid(old_camera_pos[0], new_camera_pos[0]),
+                            // Photo camera when disabled is set to exact (0, 0, 0), ignore it as well
+                            is_movement_valid(old_camera_pos[1], new_camera_pos[1]) && all(old_camera_pos[1] != 0) && all(new_camera_pos[1] != 0),
+                        };
+                        
+                        uint portal_mask = portals_with_valid_movement;
+                        [loop] while(portal_mask != 0x0) {
+                            uint index = firstbitlow(portal_mask);
+                            portal_mask ^= 0x1 << index; // Mask as seen
+
+                            Portal old_portal = Portal::decode_crt(_SelfTexture2D, index);
+                            Portal new_portal = Portal::decode_crt(new_portal_pixels[index]);
+
+                            [unroll] for(uint i = 0; i < 2; i += 1) {
+                                if(update_camera[i] && Portal::movement_intersect(old_portal, new_portal, old_camera_pos[i], new_camera_pos[i]) & 0x1) {
+                                    new_header.camera_in_portal[i] = !new_header.camera_in_portal[i];
                                 }
                             }
                         }
                     }
+
+                    // TODO update portal probes
                 }
 
-                PixelData::emit(stream, uint2(0, 0), header.encode_crt());                
+                if(instance == 0) {
+                    PixelData::emit(stream, uint2(0, 0), new_header.encode_crt());
+                }
             }
             ENDCG
         }

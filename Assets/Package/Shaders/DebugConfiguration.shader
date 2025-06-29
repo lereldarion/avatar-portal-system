@@ -84,15 +84,13 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
 
                 #ifdef _PORTAL_DATA_SOURCE_CRT
                 Header header = Header::decode_crt(_Portal_CRT);
-                [loop]
-                while(header.has_portals()) {
+                [loop] while(header.has_portals()) {
                     uint index = header.pop_active_portal();
                     PortalPixel0 p0 = PortalPixel0::decode_crt(_Portal_CRT, index);
                     if(!p0.is_enabled()) { break; }
                     Portal p = Portal::decode_crt(p0, _Portal_CRT, index);
                 #else
-                [loop]
-                for(uint index = 0; index < 32; index += 1) {
+                [loop] for(uint index = 0; index < 32; index += 1) {
                     Portal p = Portal::decode_grabpass(_Lereldarion_Portal_System_GrabPass, index);
                     if(abs(dot(p.x_axis, p.y_axis)) > 0.01) { break; } // Count only provided to CRT, so here try to detect garbage values
                 #endif

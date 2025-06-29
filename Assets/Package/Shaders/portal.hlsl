@@ -72,7 +72,7 @@ struct Portal {
     bool is_enabled() { return radius_sq > 0; }
     
     bool is_plane_point_in_shape(float3 p);
-    bool segment_intersect(float3 origin, float3 end);
+    bool segment_intersect(float3 origin, float3 end, out float intersection_ray_01);
     static Portal lerp(Portal a, Portal b, float t);
     static uint movement_intersect(Portal p0, Portal p1, float3 v0, float3 v1);
     
@@ -114,7 +114,7 @@ bool Portal::is_plane_point_in_shape(float3 p) {
 }
 
 // Does segment intersects portal precise surface (with its shape).
-bool Portal::segment_intersect(float3 origin, float3 end) {
+bool Portal::segment_intersect(float3 origin, float3 end, out float intersection_ray_01) {
     // Note that we do not have to normalize normal, ray, or x/y axis at all.
     float3 ray = end - origin;
     // portal plane equation dot(p - position, normal) = 0
@@ -122,6 +122,7 @@ bool Portal::segment_intersect(float3 origin, float3 end) {
     float t = dot(position - origin, normal) / dot(ray, normal);
     // t in [0, 1] <=> intersect point between [origin, end].
     if(t == saturate(t)) {
+        intersection_ray_01 = t;
         return is_plane_point_in_shape(origin + ray * t);
     } else {
         return false;

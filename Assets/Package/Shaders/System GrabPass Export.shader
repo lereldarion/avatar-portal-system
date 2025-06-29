@@ -1,13 +1,13 @@
 // Export System configuration to a grabpass.
 
-Shader "Lereldarion/Portal/SystemGrabPassExport" {
+Shader "Lereldarion/Portal/System GrabPass Export" {
     Properties {
         // TODO force state change from menu for explicit synchro.
         // [ToggleUI] _Portal_Force_State("Force state", Float) = 0
     }
     SubShader {
         Tags {
-            "Queue" = "Geometry-765"
+            "Queue" = "Geometry-165"
             "VRCFallback" = "Hidden"
             "PreviewType" = "Plane"
         }

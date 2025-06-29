@@ -10,8 +10,7 @@ Shader "Lereldarion/Portal/DebugItem" {
     }
     SubShader {
         Tags {
-            "Queue" = "Geometry"
-            "VRCFallback" = "Hidden"
+            "Queue" = "Geometry-164"
             "PreviewType" = "Plane"
         }
 
@@ -57,15 +56,18 @@ Shader "Lereldarion/Portal/DebugItem" {
             half4 fragment_stage (FragmentData input) : SV_Target {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
 
+                // Start portal section TODO abstract away.
+                half portal_alpha_data = 1;
+                
                 Header header = Header::decode_crt(_Portal_CRT);
                 if(header.is_enabled) {
                     bool camera_in_portal = header.camera_in_portal[_VRChatCameraMode == 0 ? 0 : 1];
                     bool portal_parity = _Camera_In_Portal; // camera_in_portal; // FIXME Testing
                     bool in_portal_space = false;
-    
+                    
                     uint transiting_portal_id = 1000; // Not tested
                     float transiting_direction = 1;
-    
+                    
                     if(_Item_Portal_State == 0) {
                         // World, do nothing
                     } else if(_Item_Portal_State == 1) {
@@ -80,16 +82,25 @@ Shader "Lereldarion/Portal/DebugItem" {
                             transiting_portal_id = _Item_Portal_State - 2;
                         }
                     }
-    
+                    
+                    float max_intersection_ray_01 = -1;
+                    uint closest_portal_id = 0;
+                    
                     [loop] while(header.has_portals()) {
                         uint index = header.pop_active_portal();
                         PortalPixel0 p0 = PortalPixel0::decode_crt(_Portal_CRT, index);
                         if(!p0.is_enabled()) { break; }
                         if(!p0.fast_intersect(_WorldSpaceCameraPos, input.world_position)) { continue; }
                         Portal portal = Portal::decode_crt(p0, _Portal_CRT, index);
-    
-                        if(portal.segment_intersect(_WorldSpaceCameraPos, input.world_position)) {
+                        
+                        float intersection_ray_01;
+                        if(portal.segment_intersect(_WorldSpaceCameraPos, input.world_position, intersection_ray_01)) {
                             portal_parity = !portal_parity;
+
+                            if(intersection_ray_01 > max_intersection_ray_01) {
+                                closest_portal_id = index;
+                                max_intersection_ray_01 = intersection_ray_01;
+                            }
                         }
     
                         if(index == transiting_portal_id) {
@@ -101,9 +112,10 @@ Shader "Lereldarion/Portal/DebugItem" {
                     }
     
                     if(portal_parity) { discard; }
+                    if(in_portal_space) { portal_alpha_data = -(1 + closest_portal_id); }
                 }
                 
-                return _Color;
+                return half4(_Color.rgb, portal_alpha_data);
             }
             ENDCG
         }

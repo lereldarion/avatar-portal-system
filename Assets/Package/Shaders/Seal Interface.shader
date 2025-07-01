@@ -27,6 +27,7 @@ Shader "Lereldarion/Portal/Seal Interface" {
             Cull Off
             ZTest Always
             ZWrite On
+            Blend Off
             Stencil {
                 // Set bit, and only run if not set.
                 Ref [_Portal_Seal_Stencil_Bit]
@@ -123,18 +124,49 @@ Shader "Lereldarion/Portal/Seal Interface" {
                 }
             }
 
-            half4 fragment_stage (FragmentData input) : SV_Target {
+            half4 fragment_stage (FragmentData input, out float output_depth : SV_Depth) : SV_Target {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
 
+                float3 ray_ws = mul((float3x3) unity_MatrixInvV, input.position_vs);
+
+                // If pixel was a portal object, keep color and seal at the portal id stored in alpha
                 float4 grab_pass_pixel = _Lereldarion_Portal_Seal_GrabPass[_Lereldarion_Portal_Seal_GrabPass_TexelSize.zw * input.grab_pos.xy / input.grab_pos.w];
+                uint portal_id;
+                if(pixel_get_depth_portal_id(grab_pass_pixel, portal_id) && input.portal_mask & (0x1 << portal_id)) {
+                    Portal p = Portal::decode_crt(_Portal_CRT, portal_id);
+                    float ray_distance = 0;
+                    p.ray_intersect(_WorldSpaceCameraPos, ray_ws, ray_distance); // Should be success
+                    float4 intersect_cs = UnityWorldToClipPos(_WorldSpaceCameraPos + ray_ws * ray_distance);
+                    output_depth = intersect_cs.z / intersect_cs.w;
+                    return half4(grab_pass_pixel.rgb, 1);
+                }
 
-                // Iterate over portals to check intersect count. Needs unbound intersect routine
+                // Scan portal for intersections
+                uint intersect_count = 0;
 
-                float3 ray_ws = normalize(mul((float3x3) unity_MatrixInvV, input.position_vs));
+                [loop] while(input.portal_mask) {
+                    uint index = pop_active_portal(input.portal_mask);
+                    PortalPixel0 p0 = PortalPixel0::decode_crt(_Portal_CRT, index);
+                    if(!p0.is_enabled()) { break; }
+                    if(!p0.fast_intersect(_WorldSpaceCameraPos, _WorldSpaceCameraPos + ray_ws)) { continue; }
+                    Portal portal = Portal::decode_crt(p0, _Portal_CRT, index);
 
-                // TODO out SV_Depth + impl
-                // 
-                return half4(grab_pass_pixel.a < 0, 0, 0, 1);
+                    float ray_distance;
+                    if(portal.ray_intersect(_WorldSpaceCameraPos, ray_ws, ray_distance)) {
+                        intersect_count += 1;
+                        // TODO handle distance
+                    }
+                }
+
+                // If in portal, discard when intersect is odd
+                // If in world, discard when intersect is even
+                if(input.camera_in_portal == bool(intersect_count & 0x1)) {
+                    discard;
+                }
+                
+                // TODO depth logic
+                output_depth = UNITY_NEAR_CLIP_VALUE;
+                return half4(0, 0, 0, 1);
             }
             ENDCG
         }

@@ -84,8 +84,8 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
 
                 #ifdef _PORTAL_DATA_SOURCE_CRT
                 Header header = Header::decode_crt(_Portal_CRT);
-                [loop] while(header.has_portals()) {
-                    uint index = header.pop_active_portal();
+                [loop] while(header.portal_mask) {
+                    uint index = pop_active_portal(header.portal_mask);
                     PortalPixel0 p0 = PortalPixel0::decode_crt(_Portal_CRT, index);
                     if(!p0.is_enabled()) { break; }
                     Portal p = Portal::decode_crt(p0, _Portal_CRT, index);

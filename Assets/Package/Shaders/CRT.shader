@@ -149,9 +149,8 @@ Shader "Lereldarion/Portal/CRT" {
                         };
                         
                         uint portal_mask = portals_with_valid_movement;
-                        [loop] while(portal_mask != 0x0) {
-                            uint index = firstbitlow(portal_mask);
-                            portal_mask ^= 0x1 << index; // Mask as seen
+                        [loop] while(portal_mask) {
+                            uint index = pop_active_portal(portal_mask);
 
                             Portal old_portal = Portal::decode_crt(_SelfTexture2D, index);
                             Portal new_portal = Portal::decode_crt(new_portal_pixels[index]);

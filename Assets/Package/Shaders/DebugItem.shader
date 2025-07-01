@@ -86,8 +86,8 @@ Shader "Lereldarion/Portal/DebugItem" {
                     float max_intersection_ray_01 = -1;
                     uint closest_portal_id = 0;
                     
-                    [loop] while(header.has_portals()) {
-                        uint index = header.pop_active_portal();
+                    [loop] while(header.portal_mask) {
+                        uint index = pop_active_portal(header.portal_mask);
                         PortalPixel0 p0 = PortalPixel0::decode_crt(_Portal_CRT, index);
                         if(!p0.is_enabled()) { break; }
                         if(!p0.fast_intersect(_WorldSpaceCameraPos, input.world_position)) { continue; }

@@ -17,17 +17,16 @@ struct Header {
     bool camera_in_portal[2];
     uint portal_mask;
 
-    bool has_portals() { return portal_mask != 0x0; }
-    uint pop_active_portal() {
-        uint index = firstbitlow(portal_mask);
-        portal_mask ^= 0x1 << index; // Mask as seen
-        return index;
-    }
-
     uint4 encode_crt();
     static Header decode_crt(uint4 pixel);
     static Header decode_crt(Texture2D<uint4> crt) { return decode_crt(crt[uint2(0, 0)]); }
 };
+
+uint pop_active_portal(inout uint portal_mask) {
+    uint index = firstbitlow(portal_mask);
+    portal_mask ^= 0x1 << index; // Mask as seen
+    return index;
+}
 
 struct CameraPosition {
     static uint4 encode_crt(float3 position) { return uint4(asuint(position), 0); }
@@ -73,6 +72,7 @@ struct Portal {
     
     bool is_plane_point_in_shape(float3 p);
     bool segment_intersect(float3 origin, float3 end, out float intersection_ray_01);
+    bool ray_intersect(float3 origin, float3 ray, out float ray_distance);
     static Portal lerp(Portal a, Portal b, float t);
     static uint movement_intersect(Portal p0, Portal p1, float3 v0, float3 v1);
     
@@ -113,9 +113,9 @@ bool Portal::is_plane_point_in_shape(float3 p) {
     }
 }
 
-// Does segment intersects portal precise surface (with its shape).
+// Does segment / ray intersects portal precise surface (with its shape).
+// Note that we do not have to normalize normal, ray, or x/y axis at all.
 bool Portal::segment_intersect(float3 origin, float3 end, out float intersection_ray_01) {
-    // Note that we do not have to normalize normal, ray, or x/y axis at all.
     float3 ray = end - origin;
     // portal plane equation dot(p - position, normal) = 0
     // ray line p(t) = origin + ray * t
@@ -123,6 +123,17 @@ bool Portal::segment_intersect(float3 origin, float3 end, out float intersection
     // t in [0, 1] <=> intersect point between [origin, end].
     if(t == saturate(t)) {
         intersection_ray_01 = t;
+        return is_plane_point_in_shape(origin + ray * t);
+    } else {
+        return false;
+    }
+}
+bool Portal::ray_intersect(float3 origin, float3 ray, out float ray_distance) {
+    // portal plane equation dot(p - position, normal) = 0
+    // ray line p(t) = origin + ray * t
+    float t = dot(position - origin, normal) / dot(ray, normal);
+    if(t >= 0) {
+        ray_distance = t;
         return is_plane_point_in_shape(origin + ray * t);
     } else {
         return false;
@@ -290,6 +301,19 @@ static Portal Portal::decode_grabpass(Texture2D<float4> grabpass, uint index) {
         grabpass[uint2(4 + 4 * index, 0)],
     };
     return decode_grabpass(pixels);
+}
+
+///////////////////////////////////////////////////////////////////////////
+
+// Render function
+
+bool pixel_get_depth_portal_id(float4 pixel, out uint portal_id) {
+    if(pixel.a <= -1) {
+        portal_id = -(1 + pixel.a);
+        return true;
+    } else {
+        return false;
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////

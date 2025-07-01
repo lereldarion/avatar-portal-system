@@ -72,7 +72,7 @@ Shader "Lereldarion/Portal/System GrabPass Export" {
                 return pixel.data;
             }
                         
-            [maxvertexcount(6)]
+            [maxvertexcount(4)]
             void geometry_stage(point WorldMeshData input_array[1], uint primitive_id : SV_PrimitiveID, inout PointStream<PixelData> stream) {
                 WorldMeshData input = input_array[0];
                 UNITY_SETUP_INSTANCE_ID(input);

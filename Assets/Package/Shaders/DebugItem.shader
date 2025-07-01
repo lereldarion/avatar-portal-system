@@ -112,7 +112,7 @@ Shader "Lereldarion/Portal/DebugItem" {
                     }
     
                     if(portal_parity) { discard; }
-                    if(in_portal_space) { portal_alpha_data = -(1 + closest_portal_id); }
+                    if(in_portal_space) { portal_alpha_data = -(1 + float(closest_portal_id)); }
                 }
                 
                 return half4(_Color.rgb, portal_alpha_data);

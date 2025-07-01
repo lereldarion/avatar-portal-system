@@ -1866,6 +1866,7 @@ MeshRenderer:
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: 857556d0aefa7904db7dd66bd27bb0ca, type: 2}
+  - {fileID: 2100000, guid: c915f999fc629084ab1db69a25bd1f0c, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -1992,7 +1993,7 @@ MonoBehaviour:
   OcclusionBoxSize: 100
   Crt: {fileID: 8600000, guid: a34942098033efa44b7edf877513a471, type: 2}
   GrabPassExport: {fileID: 2100000, guid: d5341b3e6cdc47947a1e781f126fc90c, type: 2}
-  SealPortals: {fileID: 2100000, guid: c915f999fc629084ab1db69a25bd1f0c, type: 2}
+  SealPortals: {fileID: 2100000, guid: bb7a9e4221a07834cb5559ceea74f8f1, type: 2}
 --- !u!1 &2012814117
 GameObject:
   m_ObjectHideFlags: 0

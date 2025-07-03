@@ -162,7 +162,7 @@ namespace Lereldarion.Portal
         }
 
         /// <summary>
-        /// Creates vertices and animator used to setup occlusion bounds
+        /// Setup occlusion bounds.
         /// </summary>
         /// <param name="context">Data of the current portal system being built</param>
         private void SetupOcclusionBounds(Context context, SkinnedMeshRenderer renderer)
@@ -170,11 +170,14 @@ namespace Lereldarion.Portal
             var layer = context.Animator.Controller.NewLayer("Occlusion Setup");
             var clip = context.Animator.Aac.NewClip();
 
-            // TODO occlusion vertices on portal meshes ?
+            float forced_box_size = context.System.OcclusionBoxSize;
 
-            // Force update bound on. Must be enabled by animator as VRChat disable them by default.
-            // https://github.com/pema99/shader-knowledge/blob/main/tips-and-tricks.md#update-when-offscreen-setting-for-skinned-mesh-renderer
-            clip.Animating(edit => edit.Animates(renderer, "m_UpdateWhenOffscreen").WithOneFrame(1));
+            // Simpler solution : override bound extent. Thanks Kirian.
+            clip.Animating(edit => {
+                edit.Animates(renderer, "m_AABB.m_Extent.x").WithOneFrame(forced_box_size);
+                edit.Animates(renderer, "m_AABB.m_Extent.y").WithOneFrame(forced_box_size);
+                edit.Animates(renderer, "m_AABB.m_Extent.z").WithOneFrame(forced_box_size);
+            });
 
             layer.NewState("Setup").WithAnimation(clip);
         }
@@ -196,17 +199,6 @@ namespace Lereldarion.Portal
                 tangent = new Vector3(0, portal.Size.y, 0),
                 uv0 = new Vector2((float)vertex_type, (float)portal_id),
             });
-
-            // Add vertices at 4 corners to force occlusion bound
-            for (int i = 0; i < 4; i += 1)
-            {
-                context.Vertices.Add(new Vertex
-                {
-                    transform = portal.transform,
-                    localPosition = new Vector3(i % 2 == 0 ? -portal.Size.x : portal.Size.x, i < 2 ? -portal.Size.y : portal.Size.y, 0),
-                    uv0 = new Vector2((float) VertexType.Ignored, 0),
-                });
-            }
 
             Object.DestroyImmediate(portal); // Cleanup components
         }

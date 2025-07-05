@@ -72,6 +72,7 @@ struct Portal {
     
     bool is_plane_point_in_shape(float3 p);
     bool segment_intersect(float3 origin, float3 end, out float intersection_ray_01);
+    bool segment_intersect(float3 origin, float3 end);
     bool ray_intersect(float3 origin, float3 ray, out float ray_distance);
     static Portal lerp(Portal a, Portal b, float t);
     static uint movement_intersect(Portal p0, Portal p1, float3 v0, float3 v1);
@@ -127,6 +128,10 @@ bool Portal::segment_intersect(float3 origin, float3 end, out float intersection
     } else {
         return false;
     }
+}
+bool Portal::segment_intersect(float3 origin, float3 end) {
+    float dummy;
+    return segment_intersect(origin, end, dummy);
 }
 bool Portal::ray_intersect(float3 origin, float3 ray, out float ray_distance) {
     // portal plane equation dot(p - position, normal) = 0

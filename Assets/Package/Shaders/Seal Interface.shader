@@ -90,17 +90,19 @@ Shader "Lereldarion/Portal/Seal Interface" {
                     output.camera_in_portal = header.camera_in_portal[_VRChatCameraMode == 0 ? 0 : 1];
                     output.portal_mask = header.portal_mask;
 
+                    // Camera params
+                    const float near_plane_z = -_ProjectionParams.y;
+                    const float2 tan_half_fov = 1 / unity_CameraProjection._m00_m11; // https://jsantell.com/3d-projection/
+                    
                     const float2 quad[4] = { float2(-1, -1), float2(-1, 1), float2(1, -1), float2(1, 1) };
 
                     if(output.camera_in_portal) {
                         // One fullscreen quad
                         if(primitive_id == 0) {
                             // Generate in VS close to near clip plane. Having non CS positions is essential to return to WS later.
-                            float near_plane_z = -_ProjectionParams.y;
-                            float2 tan_half_fov = 1 / unity_CameraProjection._m00_m11; // https://jsantell.com/3d-projection/
                             // Add margins in case the matrix has some rotation/skew
-                            float quad_z = near_plane_z * 1.2; // z margin
-                            float quad_xy = quad_z * tan_half_fov * 1.2; // xy margin
+                            float quad_z = near_plane_z * 1.1; // z margin
+                            float quad_xy = quad_z * tan_half_fov * 1.1; // xy margin
                             
                             [unroll] for(uint i = 0; i < 4; i += 1) {
                                 output.position_vs = float3(quad[i] * quad_xy, quad_z);
@@ -113,8 +115,16 @@ Shader "Lereldarion/Portal/Seal Interface" {
                         // One quad per enabled portal
                         if(primitive_id < 32 && header.portal_mask & (0x1 << primitive_id)) {
                             Portal p = Portal::decode_crt(_Portal_CRT, primitive_id);
+
+                            // We need the quad only for the screenspace pixel position to activate, not its depth position.
+                            // We need to avoid near plane clipping when we traverse.
+                            // Solution : scale in VS if distance from camera to quad plane is lower than corners of frustum to near plane.
+                            const float frustum_corner_length = length(float3(near_plane_z * tan_half_fov, near_plane_z)) * 1.1; // Add margin
+                            const float distance_camera_to_plane = abs(dot(_WorldSpaceCameraPos - p.position, normalize(p.normal)));
+                            const float scaling_vs = distance_camera_to_plane < frustum_corner_length ? frustum_corner_length / distance_camera_to_plane : 1;
+
                             [unroll] for(uint i = 0; i < 4; i += 1) {
-                                output.position_vs = UnityWorldToViewPos(p.position + quad[i].x * p.x_axis + quad[i].y * p.y_axis);
+                                output.position_vs = scaling_vs * UnityWorldToViewPos(p.position + quad[i].x * p.x_axis + quad[i].y * p.y_axis);
                                 output.position = UnityViewToClipPos(output.position_vs);
                                 output.grab_pos = ComputeGrabScreenPos(output.position);
                                 stream.Append(output);
@@ -143,20 +153,24 @@ Shader "Lereldarion/Portal/Seal Interface" {
 
                 // Scan portal for intersections
                 uint intersect_count = 0;
-
+                
                 [loop] while(input.portal_mask) {
                     uint index = pop_active_portal(input.portal_mask);
                     PortalPixel0 p0 = PortalPixel0::decode_crt(_Portal_CRT, index);
                     if(!p0.is_enabled()) { break; }
                     if(!p0.fast_intersect(_WorldSpaceCameraPos, _WorldSpaceCameraPos + ray_ws)) { continue; }
                     Portal portal = Portal::decode_crt(p0, _Portal_CRT, index);
-
+                    
                     float ray_distance;
                     if(portal.ray_intersect(_WorldSpaceCameraPos, ray_ws, ray_distance)) {
                         intersect_count += 1;
                         // TODO handle distance
                     }
                 }
+
+                // FIXME camera pos is not the same as centered camera pos, which explains the flashes. how to fix ?
+                // Idea : add segment from centered camera to eye camera to intersect list test ? double the tests.
+                // Other idea : special case if close to a portal
 
                 // If in portal, discard when intersect is odd
                 // If in world, discard when intersect is even
@@ -166,7 +180,10 @@ Shader "Lereldarion/Portal/Seal Interface" {
                 
                 // TODO depth logic
                 output_depth = UNITY_NEAR_CLIP_VALUE;
-                return half4(0, 0, 0, 1);
+
+                float3 crt_amera_pos = CameraPosition::decode_crt(_Portal_CRT, _VRChatCameraMode == 0 ? 0 : 1); // FIXME camera pos is definitely from last frame !
+
+                return half4(distance(crt_amera_pos, _WorldSpaceCameraPos) < 0.0001, 0, 0, 1);
             }
             ENDCG
         }

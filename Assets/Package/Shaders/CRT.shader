@@ -14,13 +14,24 @@ Shader "Lereldarion/Portal/CRT" {
         Blend Off
 
         Pass {
-            // Compact portal positions into 2 f32x4 per portal.
-            // Use the flexcrt strategy (cnlohr) : geometry pass to blit at interesting places
-            // https://github.com/cnlohr/flexcrt/blob/master/Assets/flexcrt_demo/ExampleFlexCRT.shader#L78
+            // Update system state in one pass and no update zones.
             //
-            // Update the camera states
+            // CRT for state is good as we can use an uint32x4 texture properly without casts to f16 as with camera loops.
+            // Thus portal configuration can be compacted from grabpass 4 f16x4 pixels into 2 u32x4 pixels, and add a bitmask for fast scan of active portals.
+            // This enable the system to cost 1 texture load + 1/2 per active portal (1 for fast intersection reject) on portal-aware meshes.
             //
-            // TODO Update portal probe states
+            // Kept state :
+            // - Previous Camera positions
+            // - Camera state : world|portal space
+            // - TODO Portal probe state : world|portal|transition(+/-k)
+            //
+            // CRT[N] (of frame N) runs before everything. It computes the new state N from data :
+            // - Previous state CRT[N-1]
+            // - Grabpass portal positions and control pixel : tested to be grabpass[N-1]
+            // - VRChat*CameraPos variables from N-1 (tested)
+            // It does not seem possible to fix the 1-frame input lag for CRT, only to fix the consequences.
+            // Portal position will lag a little but they are usually static so this is ok.
+            // Camera state is decoupled from final rendering camera pos anyway to support stereo cameras (VR).
 
             Name "Update Portal Configuration"
 
@@ -50,6 +61,7 @@ Shader "Lereldarion/Portal/CRT" {
                 float4 position : SV_POSITION;
                 uint4 data : DATA;
 
+                // https://github.com/cnlohr/flexcrt/blob/master/Assets/flexcrt_demo/ExampleFlexCRT.shader#L78
                 static void emit(inout PointStream<PixelData> stream, uint2 coordinates, uint4 data) {
                     PixelData output;
                     output.position = target_pixel_to_cs(coordinates, _CustomRenderTextureInfo.xy);
@@ -163,7 +175,7 @@ Shader "Lereldarion/Portal/CRT" {
                         }
                     }
 
-                    // TODO update portal probes
+                    // TODO update portal probes of line k
                 }
 
                 if(instance == 0) {

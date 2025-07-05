@@ -162,7 +162,7 @@ namespace Lereldarion.Portal
         }
 
         /// <summary>
-        /// Setup occlusion bounds.
+        /// Setup occlusion bounds using box corners and update mesh.
         /// </summary>
         /// <param name="context">Data of the current portal system being built</param>
         private void SetupOcclusionBounds(Context context, SkinnedMeshRenderer renderer)
@@ -170,14 +170,39 @@ namespace Lereldarion.Portal
             var layer = context.Animator.Controller.NewLayer("Occlusion Setup");
             var clip = context.Animator.Aac.NewClip();
 
-            float forced_box_size = context.System.OcclusionBoxSize;
+            Transform[] corners = new Transform[4];
+            for (int i = 0; i < 4; i += 1)
+            {
+                var corner = new GameObject($"Occlusion Corner {i}")
+                {
+                    transform = {
+                        parent = context.System.transform,
+                        position = context.System.transform.position,
+                    }
+                };
+                corners[i] = corner.transform;
+                context.Vertices.Add(new Vertex
+                {
+                    transform = corner.transform,
+                    normal = Vector3.zero,
+                    tangent = Vector3.zero,
+                    uv0 = new Vector2((float)VertexType.Ignored, 0),
+                });
+            }
 
-            // Simpler solution : override bound extent. Thanks Kirian.
-            clip.Animating(edit => {
-                edit.Animates(renderer, "m_AABB.m_Extent.x").WithOneFrame(forced_box_size);
-                edit.Animates(renderer, "m_AABB.m_Extent.y").WithOneFrame(forced_box_size);
-                edit.Animates(renderer, "m_AABB.m_Extent.z").WithOneFrame(forced_box_size);
-            });
+            // 4 corners of a cube.
+            float size = context.System.OcclusionBoxSize;
+            clip.Positioning(corners[0], new Vector3( size,  size,  size));
+            clip.Positioning(corners[1], new Vector3(-size, -size,  size));
+            clip.Positioning(corners[2], new Vector3(-size,  size, -size));
+            clip.Positioning(corners[3], new Vector3( size, -size, -size));
+
+            // Force update bound on. Must be enabled by animator as VRChat disable them by default.
+            // https://github.com/pema99/shader-knowledge/blob/main/tips-and-tricks.md#update-when-offscreen-setting-for-skinned-mesh-renderer
+            clip.Animating(edit => edit.Animates(renderer, "m_UpdateWhenOffscreen").WithOneFrame(1));
+
+            // Use small bounds for export
+            renderer.localBounds = new Bounds { center = Vector3.up, extents = Vector3.one };
 
             layer.NewState("Setup").WithAnimation(clip);
         }

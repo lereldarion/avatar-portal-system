@@ -89,7 +89,6 @@ Shader "Lereldarion/Portal/DebugItem" {
                     [loop] while(header.portal_mask) {
                         uint index = pop_active_portal(header.portal_mask);
                         PortalPixel0 p0 = PortalPixel0::decode(_Portal_State, index);
-                        if(!p0.is_enabled()) { break; }
                         if(!p0.fast_intersect(_WorldSpaceCameraPos, input.world_position)) { continue; }
                         Portal portal = Portal::decode(p0, _Portal_State, index);
                         

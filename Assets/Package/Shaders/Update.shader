@@ -5,7 +5,6 @@
 //
 // Material is applied to system mesh which is configured to touch both camera and be the only one in UIMenu layer.
 // Visuals are in Default layer and placed on another renderer
-//
 Shader "Lereldarion/Portal/Update" {
     Properties {
         [Header(Camera identification depths)]
@@ -17,10 +16,11 @@ Shader "Lereldarion/Portal/Update" {
         [NoScaleOffset] _Portal_RT1("RT1", 2D) = ""
 
         [Header(Portals)]
+        [ToggleUI] _Portal_System_Enabled("Set enabled flag in state texture", Integer) = 1
+        [ToggleUI] _Portal_Camera_Force_World("Force camera to world", Integer) = 0
+
         _Portal_Count("Portal count to scan", Integer) = 0
         _Valid_Movement_Max_Distance("Maximum distance allowed to consider a movement legit (no TP)", Float) = 1
-
-        // TODO toggle for resetting or synchronizing stuff ? ForceWorld would be useful
     }
     SubShader {
         Tags {
@@ -210,8 +210,10 @@ Shader "Lereldarion/Portal/Update" {
             uniform float3 _VRChatScreenCameraPos;
             uniform float3 _VRChatPhotoCameraPos;
 
-            uniform float _Valid_Movement_Max_Distance;
+            uniform uint _Portal_System_Enabled;
+            uniform uint _Portal_Camera_Force_World;
             uniform uint _Portal_Count;
+            uniform float _Valid_Movement_Max_Distance;
             
             struct MeshData {
                 UNITY_VERTEX_INPUT_INSTANCE_ID
@@ -256,7 +258,7 @@ Shader "Lereldarion/Portal/Update" {
                 _Portal_Count = min(_Portal_Count, 32);
 
                 Header header = Header::decode(_Portal_RT0);
-                header.is_enabled = true; // TODO set it to false for 1 frame when disabling system
+                header.is_enabled = _Portal_System_Enabled;
                 header.portal_mask = 0x0;
                 
                 // Update camera positions
@@ -266,13 +268,9 @@ Shader "Lereldarion/Portal/Update" {
                 }
 
                 // Every thread will load the full old and new portal info and build the portal mask.
-                uint4 new_portal_pixels[32][2]; // Store encoded portal config for later queries : camera, probe states
                 uint portals_with_valid_movement = 0x0;
                 [loop] for(uint index = 0; index < _Portal_Count; index += 1) {
-                    new_portal_pixels[index][0] = _Portal_RT0[uint2(1, index + 32)];
-                    new_portal_pixels[index][1] = _Portal_RT0[uint2(2, index + 32)];
-                    Portal new_portal = Portal::decode(new_portal_pixels[index]);
-                    
+                    Portal new_portal = Portal::decode(_Portal_RT0, index + 32);
                     if(new_portal.is_enabled()) {
                         uint bit = 0x1 << index;
                         header.portal_mask |= bit;
@@ -286,32 +284,35 @@ Shader "Lereldarion/Portal/Update" {
 
                 // Output instance new portal data
                 if(instance < _Portal_Count) {
-                    PixelData::emit(stream, uint2(1, instance), new_portal_pixels[instance][0]);
-                    PixelData::emit(stream, uint2(2, instance), new_portal_pixels[instance][1]);
+                    PixelData::emit(stream, uint2(1, instance), _Portal_RT0[uint2(1, instance + 32)]);
+                    PixelData::emit(stream, uint2(2, instance), _Portal_RT0[uint2(2, instance + 32)]);
                 }
 
                 // TODO update portal probes of line k
 
                 if(instance == 0) {
-                    // Update camera states and write header
-
-                    float3 old_camera_pos[2] = { CameraPosition::decode(_Portal_RT0, 0), CameraPosition::decode(_Portal_RT0, 1) };
-                    bool update_camera[2] = {
-                        is_movement_valid(old_camera_pos[0], new_camera_pos[0]),
-                        // Photo camera when disabled is set to exact (0, 0, 0), ignore it as well
-                        is_movement_valid(old_camera_pos[1], new_camera_pos[1]) && all(old_camera_pos[1] != 0) && all(new_camera_pos[1] != 0),
-                    };
-                    
-                    uint portal_mask = portals_with_valid_movement;
-                    [loop] while(portal_mask) {
-                        uint index = pop_active_portal(portal_mask);
-
-                        Portal old_portal = Portal::decode(_Portal_RT0, index);
-                        Portal new_portal = Portal::decode(new_portal_pixels[index]);
-
-                        [unroll] for(uint i = 0; i < 2; i += 1) {
-                            if(update_camera[i] && Portal::movement_intersect(old_portal, new_portal, old_camera_pos[i], new_camera_pos[i]) & 0x1) {
-                                header.camera_in_portal[i] = !header.camera_in_portal[i];
+                    if(_Portal_Camera_Force_World) {
+                        header.camera_in_portal[0] = false;
+                        header.camera_in_portal[1] = false;
+                    } else {
+                        // Update camera states
+                        float3 old_camera_pos[2] = { CameraPosition::decode(_Portal_RT0, 0), CameraPosition::decode(_Portal_RT0, 1) };
+                        bool update_camera[2] = {
+                            is_movement_valid(old_camera_pos[0], new_camera_pos[0]),
+                            // Photo camera when disabled is set to exact (0, 0, 0), ignore it as well
+                            is_movement_valid(old_camera_pos[1], new_camera_pos[1]) && all(old_camera_pos[1] != 0) && all(new_camera_pos[1] != 0),
+                        };
+                        
+                        uint portal_mask = portals_with_valid_movement;
+                        [loop] while(portal_mask) {
+                            uint index = pop_active_portal(portal_mask);
+                            Portal old_portal = Portal::decode(_Portal_RT0, index);
+                            Portal new_portal = Portal::decode(_Portal_RT0, index + 32);
+    
+                            [unroll] for(uint i = 0; i < 2; i += 1) {
+                                if(update_camera[i] && Portal::movement_intersect(old_portal, new_portal, old_camera_pos[i], new_camera_pos[i]) & 0x1) {
+                                    header.camera_in_portal[i] = !header.camera_in_portal[i];
+                                }
                             }
                         }
                     }

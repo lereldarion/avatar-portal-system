@@ -145,23 +145,32 @@ namespace Lereldarion.Portal
             // Make single point mesh for visuals.
             {
                 // MeshRenderer is already set ; just add a mesh filter with generated mesh
-                Renderer renderer = context.System.Visuals;
-
                 Mesh mesh = new Mesh();
                 mesh.vertices = new Vector3[] { Vector3.zero };
                 mesh.SetIndices(new int[] { 0 }, MeshTopology.Points, 0);
                 mesh.bounds = new Bounds { center = Vector3.zero, extents = Vector3.one };
 
-                MeshFilter filter = renderer.gameObject.AddComponent<MeshFilter>();
+                MeshFilter filter = context.System.Visuals.gameObject.AddComponent<MeshFilter>();
                 filter.sharedMesh = mesh;
 
-                // Extend bounding box with animator.
+                generated_meshes.Add(mesh);
+            }
+
+            // Init animation
+            {
                 var layer = context.Animator.Controller.NewLayer("Portal Init");
                 var clip = context.Animator.Aac.NewClip();
-                clip.Scaling(renderer.transform, context.System.OcclusionBoxSize * Vector3.one);
-                layer.NewState("Init").WithAnimation(clip);
 
-                generated_meshes.Add(mesh);
+                // Extend bounding box with animator.
+                clip.Scaling(context.System.Visuals.transform, context.System.OcclusionBoxSize * Vector3.one);
+
+                // Disable cameras and enable at runtime for VRC rules. Tested
+                context.System.Camera0.enabled = false;
+                context.System.Camera1.enabled = false;
+                clip.TogglingComponent(context.System.Camera0, true);
+                clip.TogglingComponent(context.System.Camera1, true);
+
+                layer.NewState("Init").WithAnimation(clip);
             }
 
             Object.DestroyImmediate(system); // Cleanup components

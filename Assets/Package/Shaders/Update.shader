@@ -8,8 +8,8 @@
 Shader "Lereldarion/Portal/Update" {
     Properties {
         [Header(Camera identification depths)]
-        _Camera0_Depth("Camera 0 depth", Float) = 0.141
-        _Camera1_Depth("Camera 1 depth", Float) = 0.142
+        _Camera0_FarPlane("Camera 0 far plane", Float) = 0
+        _Camera1_FarPlane("Camera 1 far plane", Float) = 0
 
         [Header(Render textures)]
         [NoScaleOffset] _Portal_RT0("RT0", 2D) = ""
@@ -34,8 +34,8 @@ Shader "Lereldarion/Portal/Update" {
         #pragma target 5.0
         #include "UnityCG.cginc"
 
-        bool rendering_in_orthographic_camera_with_depth(float depth) {
-            return unity_OrthoParams.w && abs(_ProjectionParams.z - depth) < 0.0001;
+        bool rendering_in_orthographic_camera_with_far_plane(float far_plane) {
+            return unity_OrthoParams.w && abs(_ProjectionParams.z - far_plane) < 0.0001;
         }
 
         float4 target_pixel_to_cs(uint2 position) {
@@ -62,7 +62,7 @@ Shader "Lereldarion/Portal/Update" {
             #pragma geometry geometry_stage
             #pragma fragment fragment_stage
 
-            uniform float _Camera0_Depth;
+            uniform float _Camera0_FarPlane;
             uniform Texture2D<uint4> _Portal_RT1;
 
             struct MeshData {
@@ -88,7 +88,7 @@ Shader "Lereldarion/Portal/Update" {
             void geometry_stage(point MeshData input[1], uint primitive_id : SV_PrimitiveID, inout TriangleStream<FragmentData> stream) {
                 UNITY_SETUP_INSTANCE_ID(input[0]);
                 
-                if(!(primitive_id == 0 && rendering_in_orthographic_camera_with_depth(_Camera0_Depth))) {
+                if(!(primitive_id == 0 && rendering_in_orthographic_camera_with_far_plane(_Camera0_FarPlane))) {
                     return;
                 }
                 
@@ -114,7 +114,7 @@ Shader "Lereldarion/Portal/Update" {
             
             #include "portal.hlsl"
             
-            uniform float _Camera0_Depth;
+            uniform float _Camera0_FarPlane;
             
             struct MeshData {
                 float3 position : POSITION;
@@ -164,7 +164,7 @@ Shader "Lereldarion/Portal/Update" {
                 WorldMeshData input = input_array[0];
                 UNITY_SETUP_INSTANCE_ID(input);
 
-                if(!rendering_in_orthographic_camera_with_depth(_Camera0_Depth)) { return; }
+                if(!rendering_in_orthographic_camera_with_far_plane(_Camera0_FarPlane)) { return; }
                 
                 PixelData output;
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
@@ -203,7 +203,7 @@ Shader "Lereldarion/Portal/Update" {
 
             #include "portal.hlsl"
 
-            uniform float _Camera1_Depth;
+            uniform float _Camera1_FarPlane;
             uniform Texture2D<uint4> _Portal_RT0; // lower half is old data, upper half new position data (no header).
 
             // VRChat global variables, independent on the rendering camera.
@@ -252,7 +252,7 @@ Shader "Lereldarion/Portal/Update" {
             void geometry_stage(point MeshData input[1], uint primitive_id : SV_PrimitiveID, uint instance : SV_GSInstanceID, inout PointStream<PixelData> stream) {
                 UNITY_SETUP_INSTANCE_ID(input[0]);
 
-                if(!(primitive_id == 0 && rendering_in_orthographic_camera_with_depth(_Camera1_Depth))) { return; }
+                if(!(primitive_id == 0 && rendering_in_orthographic_camera_with_far_plane(_Camera1_FarPlane))) { return; }
 
                 // Max supported size for now, safety against bad value
                 _Portal_Count = min(_Portal_Count, 32);

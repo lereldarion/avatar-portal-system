@@ -10,7 +10,7 @@ namespace Lereldarion.Portal
 {
     public class GeneratePortalSystemPlugin : Plugin<GeneratePortalSystemPlugin>
     {
-        public override string DisplayName => "Lereldarion Portal System: Generate Mesh";
+        public override string DisplayName => "Lereldarion Portal System";
 
         protected override void Configure()
         {
@@ -37,8 +37,8 @@ namespace Lereldarion.Portal
 
             foreach (var system in ctx.AvatarRootTransform.GetComponentsInChildren<PortalSystem>(true))
             {
-                var mesh = SetupPortalSystem(system, animator_context);
-                ctx.AssetSaver.SaveAsset(mesh); // Required for proper upload
+                var generated_meshes = SetupPortalSystem(system, animator_context);
+                ctx.AssetSaver.SaveAssets(generated_meshes); // Required for proper upload
             }
 
             var ma_object = new GameObject("Portal_Animator") { transform = { parent = ctx.AvatarRootTransform } };
@@ -80,20 +80,26 @@ namespace Lereldarion.Portal
         /// </summary>
         /// <param name="system">Controller root component : start of search for descriptors, and location where renderer is added</param>
         /// <returns>Reference to the created mesh, to be saved as asset by ndmf</returns>
-        private Mesh SetupPortalSystem(PortalSystem system, AnimatorContext animator)
+        private Mesh[] SetupPortalSystem(PortalSystem system, AnimatorContext animator)
         {
+            List<Mesh> generated_meshes = new List<Mesh>();
             Transform root = system.transform;
-            Mesh mesh = new Mesh();
-            SkinnedMeshRenderer renderer = root.gameObject.AddComponent<SkinnedMeshRenderer>();
 
             // Scan portal system components
             var vertices = new List<Vertex>();
             var context = new Context { Animator = animator, System = system, Vertices = vertices };
-            SystemInitialization(context, renderer);
             foreach (var portal in root.GetComponentsInChildren<QuadPortal>(true)) { SetupQuadPortal(portal, context); }
 
-            // Make skinned mesh
+            // Make system skinned mesh
             {
+                // Add a vertex inside update loop cameras to ensure that they will see the system mesh
+                vertices.Add(new Vertex
+                {
+                    transform = context.System.transform,
+                    uv0 = new Vector2((float) VertexType.Ignored, 0),
+                });
+
+                Mesh mesh = new Mesh();
                 mesh.vertices = vertices.Select(vertex => root.InverseTransformPoint(vertex.transform.TransformPoint(vertex.localPosition))).ToArray();
                 mesh.SetNormals(vertices.Select(vertex => root.InverseTransformVector(vertex.transform.TransformVector(vertex.normal))).ToArray());
                 mesh.SetTangents(vertices.Select(vertex =>
@@ -109,7 +115,8 @@ namespace Lereldarion.Portal
                 mesh.bindposes = bones.Select(bone => bone.worldToLocalMatrix * root.localToWorldMatrix).ToArray();
 
                 var bone_to_bone_id = new Dictionary<Transform, int>();
-                for (int i = 0; i < bones.Length; i += 1) {
+                for (int i = 0; i < bones.Length; i += 1)
+                {
                     bone_to_bone_id.Add(bones[i], i);
                 }
                 mesh.boneWeights = vertices.Select(vertex =>
@@ -120,18 +127,45 @@ namespace Lereldarion.Portal
                     return bw;
                 }).ToArray();
 
+                SkinnedMeshRenderer renderer = root.gameObject.AddComponent<SkinnedMeshRenderer>();
                 renderer.sharedMesh = mesh;
                 renderer.bones = bones;
                 renderer.sharedMaterial = system.Update;
+
+                // The system renderer only needs to be seen by update cameras, so make its bounds small
+                renderer.localBounds = new Bounds { center = Vector3.zero, extents = 0.01f * Vector3.one };
+
+                generated_meshes.Add(mesh);
             }
 
             system.Update.SetInteger("_Portal_Count", context.PortalCount);
+            system.Update.SetFloat("_Camera0_FarPlane", context.System.Camera0.farClipPlane);
+            system.Update.SetFloat("_Camera1_FarPlane", context.System.Camera1.farClipPlane);
 
-            // The system renderer only needs to be seen by update cameras, so make its bounds small
-            renderer.localBounds = new Bounds { center = Vector3.zero, extents = 0.01f * Vector3.one };
+            // Make single point mesh for visuals.
+            {
+                // MeshRenderer is already set ; just add a mesh filter with generated mesh
+                Renderer renderer = context.System.Visuals;
+
+                Mesh mesh = new Mesh();
+                mesh.vertices = new Vector3[] { Vector3.zero };
+                mesh.SetIndices(new int[] { 0 }, MeshTopology.Points, 0);
+                mesh.bounds = new Bounds { center = Vector3.zero, extents = Vector3.one };
+
+                MeshFilter filter = renderer.gameObject.AddComponent<MeshFilter>();
+                filter.sharedMesh = mesh;
+
+                // Extend bounding box with animator.
+                var layer = context.Animator.Controller.NewLayer("Portal Init");
+                var clip = context.Animator.Aac.NewClip();
+                clip.Scaling(renderer.transform, context.System.OcclusionBoxSize * Vector3.one);
+                layer.NewState("Init").WithAnimation(clip);
+
+                generated_meshes.Add(mesh);
+            }
 
             Object.DestroyImmediate(system); // Cleanup components
-            return mesh;
+            return generated_meshes.ToArray();
         }
 
         private class Context
@@ -148,38 +182,6 @@ namespace Lereldarion.Portal
 
             private int id = 0;
             public int UniqueId() { return id++; }
-        }
-
-        /// <summary>
-        /// Setup occlusion bounds using box corners and update mesh.
-        /// Enables cameras
-        /// </summary>
-        /// <param name="context">Data of the current portal system being built</param>
-        private void SystemInitialization(Context context, SkinnedMeshRenderer renderer)
-        {
-            // Add a vertex inside update loop cameras to ensure that they will see the system mesh
-            context.Vertices.Add(new Vertex
-            {
-                transform = context.System.transform,
-                uv0 = new Vector2((float) VertexType.Ignored, 0),
-            });
-
-
-            var layer = context.Animator.Controller.NewLayer("Portal Init");
-            var clip = context.Animator.Aac.NewClip();
-
-            // Disable cameras at upload but enable in setup
-            foreach (Camera c in context.System.GetComponentsInChildren<Camera>(true))
-            {
-                clip.TogglingComponent(c, true);
-                c.enabled = false;
-            }
-
-            // Make visuals mesh large to bypass occlusion
-            // TODO make it a point mesh + forced bounds
-            clip.Scaling(context.System.Visuals.transform, context.System.OcclusionBoxSize * Vector3.one);
-
-            layer.NewState("Init").WithAnimation(clip);
         }
 
         /// <summary>

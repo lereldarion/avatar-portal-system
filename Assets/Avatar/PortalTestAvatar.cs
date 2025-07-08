@@ -80,11 +80,29 @@ namespace Lereldarion
                 ma.NewParameter(parameter).WithDefaultValue(false);
                 new_installed_menu_item().Name("System").Toggle(parameter);
 
-                var disabled = layer.NewState("Disabled").WithAnimation(aac.NewClip().Toggling(config.SystemRoot, false));
-                var enabled = layer.NewState("Enabled").WithAnimation(aac.NewClip().Toggling(config.SystemRoot, true));
+                var renderer = config.SystemRoot.GetComponent<SkinnedMeshRenderer>();
+
+                // Need system shader disabled for 1 frame to update texture.
+                var disabling = layer.NewState("Disabling").WithAnimation(aac.NewClip()
+                    .Toggling(config.SystemRoot, true)
+                    .Animating(edit => edit.Animates(renderer, "material._Portal_System_Enabled").WithOneFrame(0))
+                );
+
+                var disabled = layer.NewState("Disabled").WithAnimation(aac.NewClip()
+                    .Toggling(config.SystemRoot, false)
+                    .Animating(edit => edit.Animates(renderer, "material._Portal_System_Enabled").WithOneFrame(0))
+                );
+                var enabled = layer.NewState("Enabled").WithAnimation(aac.NewClip()
+                    .Toggling(config.SystemRoot, true)
+                    .Animating(edit => edit.Animates(renderer, "material._Portal_System_Enabled").WithOneFrame(1))
+                );
 
                 disabled.TransitionsTo(enabled).When(parameter.IsTrue());
-                enabled.TransitionsTo(disabled).When(parameter.IsFalse());
+                enabled.TransitionsTo(disabling).When(parameter.IsFalse());
+                disabling.AutomaticallyMovesTo(disabled);
+
+                // Disable system at export. Required for cameras.
+                config.SystemRoot.SetActive(false);
             }
             for (int i = 0; i < config.MenuPortals.Length; i += 1)
             {

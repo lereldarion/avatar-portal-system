@@ -1342,7 +1342,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1229071629}
   - component: {fileID: 1229071627}
-  - component: {fileID: 1229071628}
   m_Layer: 0
   m_Name: Visuals
   m_TagString: Untagged
@@ -1392,14 +1391,6 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!33 &1229071628
-MeshFilter:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1229071626}
-  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
 --- !u!4 &1229071629
 Transform:
   m_ObjectHideFlags: 0
@@ -2252,8 +2243,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Update: {fileID: 2100000, guid: 59415f696a0549344b8959f6743658dc, type: 2}
-  OcclusionBoxSize: 1000
+  Camera0: {fileID: 1534092763}
+  Camera1: {fileID: 1578434701}
   Visuals: {fileID: 1229071627}
+  OcclusionBoxSize: 1000
 --- !u!1 &2012814117
 GameObject:
   m_ObjectHideFlags: 0

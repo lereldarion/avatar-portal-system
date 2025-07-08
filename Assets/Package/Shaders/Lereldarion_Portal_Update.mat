@@ -32,10 +32,14 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Ints:
+    - _Portal_Camera_Force_World: 0
     - _Portal_Count: 4
+    - _Portal_System_Enabled: 1
     m_Floats:
     - _Camera0_Depth: 0.141
+    - _Camera0_FarPlane: 0.141
     - _Camera1_Depth: 0.142
+    - _Camera1_FarPlane: 0.142
     - _Valid_Movement_Max_Distance: 1
     m_Colors: []
   m_BuildTextureStacks: []

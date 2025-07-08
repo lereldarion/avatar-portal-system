@@ -70,9 +70,8 @@ namespace Lereldarion.Portal
         {
             /// <summary>For points that force mesh bounds</summary>
             Ignored = 0,
-            Control = 1,
-            QuadPortal = 2,
-            EllipsePortal = 3,
+            QuadPortal = 1,
+            EllipsePortal = 2,
         }
 
         /// <summary>
@@ -90,8 +89,7 @@ namespace Lereldarion.Portal
             // Scan portal system components
             var vertices = new List<Vertex>();
             var context = new Context { Animator = animator, System = system, Vertices = vertices };
-            SetupOcclusionBounds(context, renderer);
-            SetupControlVertex(context);
+            SystemInitialization(context, renderer);
             foreach (var portal in root.GetComponentsInChildren<QuadPortal>(true)) { SetupQuadPortal(portal, context); }
 
             // Make skinned mesh
@@ -124,11 +122,13 @@ namespace Lereldarion.Portal
 
                 renderer.sharedMesh = mesh;
                 renderer.bones = bones;
-                renderer.sharedMaterials = new Material[] { system.GrabPassExport, system.SealPortals };
+                renderer.sharedMaterial = system.Update;
             }
 
-            // Set CRT parameters
-            system.Crt.material.SetInteger("_GrabPass_Portal_Count", context.PortalCount);
+            system.Update.SetInteger("_Portal_Count", context.PortalCount);
+
+            // The system renderer only needs to be seen by update cameras, so make its bounds small
+            renderer.localBounds = new Bounds { center = Vector3.zero, extents = 0.01f * Vector3.one };
 
             Object.DestroyImmediate(system); // Cleanup components
             return mesh;
@@ -150,61 +150,36 @@ namespace Lereldarion.Portal
             public int UniqueId() { return id++; }
         }
 
-        private void SetupControlVertex(Context context) 
+        /// <summary>
+        /// Setup occlusion bounds using box corners and update mesh.
+        /// Enables cameras
+        /// </summary>
+        /// <param name="context">Data of the current portal system being built</param>
+        private void SystemInitialization(Context context, SkinnedMeshRenderer renderer)
         {
-            // Provide animator values to grabpass and then CRT
-            // Other data is unused
+            // Add a vertex inside update loop cameras to ensure that they will see the system mesh
             context.Vertices.Add(new Vertex
             {
                 transform = context.System.transform,
-                uv0 = new Vector2((float) VertexType.Control, 0),
+                uv0 = new Vector2((float) VertexType.Ignored, 0),
             });
-        }
 
-        /// <summary>
-        /// Setup occlusion bounds using box corners and update mesh.
-        /// </summary>
-        /// <param name="context">Data of the current portal system being built</param>
-        private void SetupOcclusionBounds(Context context, SkinnedMeshRenderer renderer)
-        {
-            var layer = context.Animator.Controller.NewLayer("Occlusion Setup");
+
+            var layer = context.Animator.Controller.NewLayer("Portal Init");
             var clip = context.Animator.Aac.NewClip();
 
-            Transform[] corners = new Transform[4];
-            for (int i = 0; i < 4; i += 1)
+            // Disable cameras at upload but enable in setup
+            foreach (Camera c in context.System.GetComponentsInChildren<Camera>(true))
             {
-                var corner = new GameObject($"Occlusion Corner {i}")
-                {
-                    transform = {
-                        parent = context.System.transform,
-                        position = context.System.transform.position,
-                    }
-                };
-                corners[i] = corner.transform;
-                context.Vertices.Add(new Vertex
-                {
-                    transform = corner.transform,
-                    normal = Vector3.zero,
-                    tangent = Vector3.zero,
-                    uv0 = new Vector2((float)VertexType.Ignored, 0),
-                });
+                clip.TogglingComponent(c, true);
+                c.enabled = false;
             }
 
-            // 4 corners of a cube.
-            float size = context.System.OcclusionBoxSize;
-            clip.Positioning(corners[0], new Vector3( size,  size,  size));
-            clip.Positioning(corners[1], new Vector3(-size, -size,  size));
-            clip.Positioning(corners[2], new Vector3(-size,  size, -size));
-            clip.Positioning(corners[3], new Vector3( size, -size, -size));
+            // Make visuals mesh large to bypass occlusion
+            // TODO make it a point mesh + forced bounds
+            clip.Scaling(context.System.Visuals.transform, context.System.OcclusionBoxSize * Vector3.one);
 
-            // Force update bound on. Must be enabled by animator as VRChat disable them by default.
-            // https://github.com/pema99/shader-knowledge/blob/main/tips-and-tricks.md#update-when-offscreen-setting-for-skinned-mesh-renderer
-            clip.Animating(edit => edit.Animates(renderer, "m_UpdateWhenOffscreen").WithOneFrame(1));
-
-            // Use small bounds for export
-            renderer.localBounds = new Bounds { center = Vector3.up, extents = Vector3.one };
-
-            layer.NewState("Setup").WithAnimation(clip);
+            layer.NewState("Init").WithAnimation(clip);
         }
 
         /// <summary>

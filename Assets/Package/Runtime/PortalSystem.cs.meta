@@ -4,9 +4,8 @@ MonoImporter:
   externalObjects: {}
   serializedVersion: 2
   defaultReferences:
-  - Crt: {fileID: 8600000, guid: a34942098033efa44b7edf877513a471, type: 2}
-  - GrabPassExport: {fileID: 2100000, guid: d5341b3e6cdc47947a1e781f126fc90c, type: 2}
-  - SealPortals: {fileID: 2100000, guid: bb7a9e4221a07834cb5559ceea74f8f1, type: 2}
+  - Update: {instanceID: 0}
+  - SealPortals: {instanceID: 0}
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 

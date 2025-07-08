@@ -9,14 +9,13 @@ namespace Lereldarion.Portal
     [DisallowMultipleComponent]
     public class PortalSystem : MonoBehaviour, IEditorOnly
     {
+        [Tooltip("Update loop material")]
+        public Material Update;
+
+        [Header("Visuals")]
         [Min(1f), Tooltip("Force occlusion bounds of the system to this size")]
-        public float OcclusionBoxSize = 100f;
+        public float OcclusionBoxSize = 1000f;
 
-        [Tooltip("CRT : some parameters are set from export script")]
-        public CustomRenderTexture Crt;
-
-        [Header("Materials")]
-        public Material GrabPassExport;
-        public Material SealPortals;
+        public Renderer Visuals;
     }
 }

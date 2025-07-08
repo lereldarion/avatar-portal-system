@@ -4,7 +4,7 @@ Shader "Lereldarion/Portal/DebugItem" {
         _Color("Color", Color) = (1, 1, 1, 0)
 
         [Header(Portal)]
-        [NoScaleOffset] _Portal_CRT("Portal CRT texture", 2D) = ""
+        [NoScaleOffset] _Portal_State("Portal state texture", 2D) = ""
         _Item_Portal_State("Item portal state : 0=w,1=p,2+n=transiting_fwd,-2-n=transiting_back)", Integer) = 0
         [ToggleUI] _Camera_In_Portal("Camera is in portal space", Float) = 0
     }
@@ -23,7 +23,7 @@ Shader "Lereldarion/Portal/DebugItem" {
 
             #include "portal.hlsl"
 
-            uniform Texture2D<uint4> _Portal_CRT;
+            uniform Texture2D<uint4> _Portal_State;
 
             #pragma vertex vertex_stage
             #pragma fragment fragment_stage
@@ -59,7 +59,7 @@ Shader "Lereldarion/Portal/DebugItem" {
                 // Start portal section TODO abstract away.
                 half portal_alpha_data = 1;
                 
-                Header header = Header::decode_crt(_Portal_CRT);
+                Header header = Header::decode(_Portal_State);
                 if(header.is_enabled) {
                     bool camera_in_portal = header.camera_in_portal[_VRChatCameraMode == 0 ? 0 : 1];
                     bool portal_parity = _Camera_In_Portal; // camera_in_portal; // FIXME Testing
@@ -88,10 +88,10 @@ Shader "Lereldarion/Portal/DebugItem" {
                     
                     [loop] while(header.portal_mask) {
                         uint index = pop_active_portal(header.portal_mask);
-                        PortalPixel0 p0 = PortalPixel0::decode_crt(_Portal_CRT, index);
+                        PortalPixel0 p0 = PortalPixel0::decode(_Portal_State, index);
                         if(!p0.is_enabled()) { break; }
                         if(!p0.fast_intersect(_WorldSpaceCameraPos, input.world_position)) { continue; }
-                        Portal portal = Portal::decode_crt(p0, _Portal_CRT, index);
+                        Portal portal = Portal::decode(p0, _Portal_State, index);
                         
                         float intersection_ray_01;
                         if(portal.segment_intersect(_WorldSpaceCameraPos, input.world_position, intersection_ray_01)) {

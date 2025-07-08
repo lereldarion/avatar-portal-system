@@ -7,8 +7,8 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Lereldarion_Portal_SystemGrabPassExport
-  m_Shader: {fileID: 4800000, guid: 552aa901e32399e4591164655140b41f, type: 3}
+  m_Name: Lereldarion_Portal_Update
+  m_Shader: {fileID: 4800000, guid: ca68724b7b7a0064da7a788a3fed61ca, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -22,22 +22,20 @@ Material:
   m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
-    m_TexEnvs: []
-    m_Ints: []
+    m_TexEnvs:
+    - _Portal_RT0:
+        m_Texture: {fileID: 8400000, guid: bc450bf488e8c344f8ee243a4e4f6aab, type: 2}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Portal_RT1:
+        m_Texture: {fileID: 8400000, guid: 81a191f48182f6c48a2062125d3fca34, type: 2}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints:
+    - _Portal_Count: 4
     m_Floats:
-    - _Portal_Enabled_0: 1
-    - _Portal_Enabled_1: 1
-    - _Portal_Enabled_10: 0
-    - _Portal_Enabled_11: 0
-    - _Portal_Enabled_12: 0
-    - _Portal_Enabled_13: 0
-    - _Portal_Enabled_2: 0
-    - _Portal_Enabled_3: 0
-    - _Portal_Enabled_4: 0
-    - _Portal_Enabled_5: 0
-    - _Portal_Enabled_6: 0
-    - _Portal_Enabled_7: 0
-    - _Portal_Enabled_8: 0
-    - _Portal_Enabled_9: 0
+    - _Camera0_Depth: 0.141
+    - _Camera1_Depth: 0.142
+    - _Valid_Movement_Max_Distance: 1
     m_Colors: []
   m_BuildTextureStacks: []

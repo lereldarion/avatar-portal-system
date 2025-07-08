@@ -1,8 +1,7 @@
 
 Shader "Lereldarion/Portal/DebugConfiguration" {
     Properties {
-        [KeywordEnum(GrabPass,CRT)] _Portal_Data_Source("Data source", Float) = 0
-        [NoScaleOffset] _Portal_CRT("CRT texture", 2D) = ""
+        [NoScaleOffset] _Portal_State("State texture", 2D) = ""
     }
     SubShader {
         Tags {
@@ -18,14 +17,11 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
             #pragma target 5.0
             #pragma multi_compile_instancing
 
-            #pragma shader_feature _PORTAL_DATA_SOURCE_GRABPASS _PORTAL_DATA_SOURCE_CRT
-
             #include "UnityCG.cginc"
 
             #include "portal.hlsl"
 
-            uniform Texture2D<float4> _Lereldarion_Portal_System_GrabPass;
-            uniform Texture2D<uint4> _Portal_CRT;
+            uniform Texture2D<uint4> _Portal_State;
 
             #pragma vertex vertex_stage
             #pragma geometry geometry_stage
@@ -82,18 +78,10 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
 
                 if(primitive_id > 0) { return; }
 
-                #ifdef _PORTAL_DATA_SOURCE_CRT
-                Header header = Header::decode_crt(_Portal_CRT);
+                Header header = Header::decode(_Portal_State);
                 [loop] while(header.portal_mask) {
                     uint index = pop_active_portal(header.portal_mask);
-                    PortalPixel0 p0 = PortalPixel0::decode_crt(_Portal_CRT, index);
-                    if(!p0.is_enabled()) { break; }
-                    Portal p = Portal::decode_crt(p0, _Portal_CRT, index);
-                #else
-                [loop] for(uint index = 0; index < 32; index += 1) {
-                    Portal p = Portal::decode_grabpass(_Lereldarion_Portal_System_GrabPass, index);
-                    if(abs(dot(p.x_axis, p.y_axis)) > 0.01) { break; } // Count only provided to CRT, so here try to detect garbage values
-                #endif
+                    Portal p = Portal::decode(_Portal_State, index);
 
                     LineDrawer drawer = LineDrawer::init(hue_shift_yiq(half3(1, 0, 0), index / 8.0 * UNITY_TWO_PI));
                     stream.RestartStrip();
@@ -112,10 +100,9 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
                     }
                 }
 
-                #ifdef _PORTAL_DATA_SOURCE_CRT
                 // Cameras
                 for(uint index = 0; index < 2; index += 1) {
-                    float3 position = CameraPosition::decode_crt(_Portal_CRT, index);
+                    float3 position = CameraPosition::decode(_Portal_State, index);
                     
                     // Only display camera position if not the current one.
                     float s = 0.1;
@@ -133,7 +120,6 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
                         drawer.solid_ws(stream, position + float3(0, 0, s));
                     }
                 }
-                #endif
             }
             ENDCG
         }

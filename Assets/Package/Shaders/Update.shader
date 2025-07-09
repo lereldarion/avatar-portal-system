@@ -317,6 +317,10 @@ Shader "Lereldarion/Portal/Update" {
                         }
                     }
 
+                    // FIXME compute intersection flips between centered pos and stereo eyes. Placeholder for now
+                    header.stereo_eye_in_portal[0] = header.camera_in_portal[0];
+                    header.stereo_eye_in_portal[1] = header.camera_in_portal[0];
+
                     PixelData::emit(stream, uint2(0, 0), header.encode());
                 }
             }

@@ -61,7 +61,7 @@ Shader "Lereldarion/Portal/DebugItem" {
                 
                 Header header = Header::decode(_Portal_State);
                 if(header.is_enabled) {
-                    bool camera_in_portal = header.camera_in_portal[_VRChatCameraMode == 0 ? 0 : 1];
+                    bool camera_in_portal = header.camera_portal_state(_VRChatCameraMode);
                     bool portal_parity = _Camera_In_Portal; // camera_in_portal; // FIXME Testing
                     bool in_portal_space = false;
                     

@@ -22,6 +22,8 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
             #include "portal.hlsl"
 
             uniform Texture2D<uint4> _Portal_State;
+            uniform float4 _VRChatScreenCameraRot;
+            uniform float4 _VRChatPhotoCameraRot;
 
             #pragma vertex vertex_stage
             #pragma geometry geometry_stage
@@ -71,6 +73,10 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
                 const half cosAngle = cos(hueAngle);
                 return col * cosAngle + cross(k, col) * sinAngle + k * dot(k, col) * (1.0 - cosAngle);
             }
+
+            float3 quaternion_rotate(float4 q, float3 v) {
+                return v + 2.0 * cross(q.xyz, cross(q.xyz, v) + q.w * v);
+            }
             
             [maxvertexcount(128)]
             void geometry_stage(point MeshData input[1], uint primitive_id : SV_PrimitiveID, inout LineStream<LinePoint> stream) {
@@ -103,6 +109,8 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
                 // Cameras
                 for(uint index = 0; index < 2; index += 1) {
                     float3 position = CameraPosition::decode(_Portal_State, index);
+
+                    float4 rotation = index == 0 ? _VRChatScreenCameraRot : _VRChatPhotoCameraRot;
                     
                     // Only display camera position if not the current one.
                     float s = 0.1;
@@ -110,14 +118,14 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
                         bool in_portal = header.camera_in_portal[index];
                         LineDrawer drawer = LineDrawer::init(float3(in_portal, !in_portal, 0));
                         stream.RestartStrip();
-                        drawer.solid_ws(stream, position - float3(s, 0, 0));
-                        drawer.solid_ws(stream, position + float3(s, 0, 0));
+                        drawer.solid_ws(stream, position - quaternion_rotate(rotation, float3(s, 0, 0)));
+                        drawer.solid_ws(stream, position + quaternion_rotate(rotation, float3(s, 0, 0)));
                         stream.RestartStrip();
-                        drawer.solid_ws(stream, position - float3(0, s, 0));
-                        drawer.solid_ws(stream, position + float3(0, s, 0));
+                        drawer.solid_ws(stream, position - quaternion_rotate(rotation, float3(0, s, 0)));
+                        drawer.solid_ws(stream, position + quaternion_rotate(rotation, float3(0, s, 0)));
                         stream.RestartStrip();
-                        drawer.solid_ws(stream, position - float3(0, 0, s));
-                        drawer.solid_ws(stream, position + float3(0, 0, s));
+                        drawer.solid_ws(stream, position - quaternion_rotate(rotation, float3(0, 0, s)));
+                        drawer.solid_ws(stream, position + quaternion_rotate(rotation, float3(0, 0, s)));
                     }
                 }
             }

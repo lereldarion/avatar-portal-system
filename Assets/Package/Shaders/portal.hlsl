@@ -3,7 +3,7 @@
 
 // Texture Encodings :
 // Header at (0, 0).
-// - r : bit0 = system enabled, bit[1,2] = main/photo camera state
+// - r : bit0 = system enabled, bit[1,2] = main/photo camera state, bit[3,4] = stereo eye state derived from main
 // - g : u32 is a bitmask of active portals for fast scan.
 // Camera position pixels
 // - pixel = uint4 as float3(wpos.xyz).
@@ -15,7 +15,10 @@
 struct Header {
     bool is_enabled;
     bool camera_in_portal[2];
+    bool stereo_eye_in_portal[2];
     uint portal_mask;
+
+    bool camera_portal_state(float vrc_camera_mode);
 
     uint4 encode();
     static Header decode(uint4 pixel);
@@ -199,7 +202,9 @@ static uint Portal::movement_intersect(Portal p0, Portal p1, float3 v0, float3 v
 
 uint4 Header::encode() {
     return uint4(
-        (is_enabled ? 0x1 : 0x0) | (camera_in_portal[0] ? 0x2 : 0x0) | (camera_in_portal[1] ? 0x4 : 0x0),
+        (is_enabled ? 0x1 : 0x0) |
+        (camera_in_portal[0] ? 0x2 : 0x0) | (camera_in_portal[1] ? 0x4 : 0x0) |
+        (stereo_eye_in_portal[0] ? 0x8 : 0x0) | (stereo_eye_in_portal[1] ? 0x10 : 0x0),
         portal_mask,
         0,
         0
@@ -210,6 +215,8 @@ static Header Header::decode(uint4 pixel) {
     h.is_enabled = pixel.r & 0x1;
     h.camera_in_portal[0] = pixel.r & 0x2;
     h.camera_in_portal[1] = pixel.r & 0x4;
+    h.stereo_eye_in_portal[0] = pixel.r & 0x8;
+    h.stereo_eye_in_portal[1] = pixel.r & 0x10;
     h.portal_mask = pixel.g;
     return h;
 }
@@ -235,6 +242,21 @@ static Portal Portal::decode(PortalPixel0 pixel0, uint4 pixel1) {
 }
 
 ///////////////////////////////////////////////////////////////////////////
+
+bool Header::camera_portal_state(float vrc_camera_mode) {
+    #if USING_STEREO_MATRICES
+    if(vrc_camera_mode == 0) {
+        // VR mode: only the main one is tracked with stereo offsets.
+        return stereo_eye_in_portal[unity_StereoEyeIndex];
+    } else {
+        // For all other assume this is photo camera. Maybe restrict to 1-2 (VR or desktop handheld camera)
+        return camera_in_portal[1];
+    }
+    #else
+    // Assume desktop centered or photo camera ; these are the only 2 we track.
+    return camera_in_portal[vrc_camera_mode == 0 ? 0 : 1];
+    #endif
+}
 
 // Render function
 

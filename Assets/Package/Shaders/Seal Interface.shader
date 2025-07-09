@@ -89,8 +89,7 @@ Shader "Lereldarion/Portal/Seal Interface" {
 
                 Header header = Header::decode(_Portal_State);
                 if(header.is_enabled) {
-                    uint camera_id = _VRChatCameraMode == 0 ? 0 : 1;
-                    output.camera_in_portal = header.camera_in_portal[camera_id];
+                    output.camera_in_portal = header.camera_portal_state(_VRChatCameraMode);
                     output.portal_mask = header.portal_mask;
 
                     // Determine if a quad is printed on the screen for this primitive_id

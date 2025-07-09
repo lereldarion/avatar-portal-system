@@ -75,7 +75,8 @@ Shader "Lereldarion/Portal/Update" {
             };
 
             void vertex_stage (MeshData input, out MeshData output) {
-                output = input;
+                UNITY_SETUP_INSTANCE_ID(input);
+                UNITY_TRANSFER_INSTANCE_ID(input, output);
             }
             
             uint4 fragment_stage (FragmentData input) : SV_Target {

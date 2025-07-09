@@ -40,7 +40,8 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
             };
             
             void vertex_stage (MeshData input, out MeshData output) {
-                output = input;
+                UNITY_SETUP_INSTANCE_ID(input);
+                UNITY_TRANSFER_INSTANCE_ID(input, output);
             }
             
             half4 fragment_stage (LinePoint line_point) : SV_Target {

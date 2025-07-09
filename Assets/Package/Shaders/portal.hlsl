@@ -244,7 +244,7 @@ static Portal Portal::decode(PortalPixel0 pixel0, uint4 pixel1) {
 ///////////////////////////////////////////////////////////////////////////
 
 bool Header::camera_portal_state(float vrc_camera_mode) {
-    #if USING_STEREO_MATRICES
+    #ifdef USING_STEREO_MATRICES
     if(vrc_camera_mode == 0) {
         // VR mode: only the main one is tracked with stereo offsets.
         return stereo_eye_in_portal[unity_StereoEyeIndex];

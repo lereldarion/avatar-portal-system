@@ -30,8 +30,8 @@ Shader "Lereldarion/Portal/Update" {
         }
 
         CGINCLUDE
-        #pragma multi_compile_instancing
         #pragma target 5.0
+        #pragma multi_compile_instancing
         #include "UnityCG.cginc"
 
         bool rendering_in_orthographic_camera_with_far_plane(float far_plane) {
@@ -45,7 +45,6 @@ Shader "Lereldarion/Portal/Update" {
             if (_ProjectionParams.x < 0) { position_cs.y = -position_cs.y; }
             return float4(position_cs, UNITY_NEAR_CLIP_VALUE, 1);
         }
-
         ENDCG
 
         ZTest Always
@@ -206,10 +205,14 @@ Shader "Lereldarion/Portal/Update" {
 
             uniform float _Camera1_FarPlane;
             uniform Texture2D<uint4> _Portal_RT0; // lower half is old data, upper half new position data (no header).
-
+            
             // VRChat global variables, independent on the rendering camera.
             uniform float3 _VRChatScreenCameraPos;
             uniform float3 _VRChatPhotoCameraPos;
+            
+            // Data used to reconstruct stereo eye ws positions
+            uniform Texture2D<half4> _Lereldarion_Portal_Seal_GrabPass; // Stereo VS offsets
+            uniform float4 _VRChatScreenCameraRot;
 
             uniform uint _Portal_System_Enabled;
             uniform uint _Portal_Camera_Force_World;
@@ -234,7 +237,8 @@ Shader "Lereldarion/Portal/Update" {
             };
             
             void vertex_stage (MeshData input, out MeshData output) {
-                output = input;
+                UNITY_SETUP_INSTANCE_ID(input);
+                UNITY_TRANSFER_INSTANCE_ID(input, output);
             }
             
             uint4 fragment_stage (PixelData pixel) : SV_Target {
@@ -242,10 +246,15 @@ Shader "Lereldarion/Portal/Update" {
                 return pixel.data;
             }
 
+            float length_sq(float3 v) { return dot(v, v); }
+
             bool is_movement_valid(float3 from, float3 to) {
-                float3 movement = to - from;
-                return dot(movement, movement) < _Valid_Movement_Max_Distance * _Valid_Movement_Max_Distance;
+                return length_sq(to - from) < _Valid_Movement_Max_Distance * _Valid_Movement_Max_Distance;
                 // TODO use max speed with deltatime
+            }
+
+            float3 quaternion_rotate(float4 q, float3 v) {
+                return v + 2.0 * cross(q.xyz, cross(q.xyz, v) + q.w * v);
             }
             
             [instance(32)] // One per horizontal line
@@ -318,9 +327,30 @@ Shader "Lereldarion/Portal/Update" {
                         }
                     }
 
-                    // FIXME compute intersection flips between centered pos and stereo eyes. Placeholder for now
+                    // Compute intersection flips between centered pos and stereo eyes.
                     header.stereo_eye_in_portal[0] = header.camera_in_portal[0];
                     header.stereo_eye_in_portal[1] = header.camera_in_portal[0];
+                    float3 stereo_eye_offsets[2] = {
+                        _Lereldarion_Portal_Seal_GrabPass[uint2(0, 0)].xyz,
+                        _Lereldarion_Portal_Seal_GrabPass[uint2(1, 0)].xyz
+                    };
+                    if(length_sq(stereo_eye_offsets[0]) > 0) {
+                        float3 stereo_eye_ws[2] = {
+                            _VRChatScreenCameraPos + quaternion_rotate(_VRChatScreenCameraRot, stereo_eye_offsets[0]),
+                            _VRChatScreenCameraPos + quaternion_rotate(_VRChatScreenCameraRot, stereo_eye_offsets[1])
+                        };
+
+                        uint portal_mask = header.portal_mask; // Check all enabled portals at this frame.
+                        [loop] while(portal_mask) {
+                            uint index = pop_active_portal(portal_mask);
+                            Portal new_portal = Portal::decode(_Portal_RT0, index + 32);
+                            [unroll] for(uint i = 0; i < 2; i += 1) {
+                                if(new_portal.segment_intersect(_VRChatScreenCameraPos, stereo_eye_ws[i])) {
+                                    header.stereo_eye_in_portal[i] = !header.stereo_eye_in_portal[i];
+                                }
+                            }
+                        }
+                    }
 
                     PixelData::emit(stream, uint2(0, 0), header.encode());
                 }

@@ -11,6 +11,102 @@ Shader "Lereldarion/Portal/Seal Interface" {
             "PreviewType" = "Plane"
         }
 
+        Pass {
+            Name "Extract Stereo Eye Offsets"
+
+            // Stereo offsets can only be extracted from a grabpass running in VR SPS-I.
+            // Goal is for the grabpass to store view-space offsets (2x f16x3 pixels) and let them be used by camera loop update.
+            // Update probably runs before VR camera, so we will have last frame offsets, but they should not change in view space.
+            // Other problem : only the last grabpass will be kept global for the next frame. So only override when in VR and copy if not to transmit to the last grabpass.
+            ZTest Always
+            ZWrite Off
+            Blend Off
+            ColorMask RGB // Keep alpha from portal-aware shaders intact
+
+            CGPROGRAM
+            #pragma target 5.0
+            #pragma multi_compile_instancing
+
+            #include "UnityCG.cginc"
+
+            #pragma vertex vertex_stage
+            #pragma geometry geometry_stage
+            #pragma fragment fragment_stage
+
+            uniform Texture2D<half4> _Lereldarion_Portal_Seal_GrabPass;
+            uniform float _VRChatCameraMode;
+            uniform float3 _VRChatScreenCameraPos;
+            uniform float4 _VRChatScreenCameraRot;
+
+            struct MeshData {
+                UNITY_VERTEX_INPUT_INSTANCE_ID
+            };
+
+            float4 target_pixel_to_cs(uint2 position) {
+                float2 target_resolution = _ScreenParams.xy;
+                float2 position_cs = (position * 2 - target_resolution + 1) / target_resolution; // +1 = center of pixels
+                // https://docs.unity3d.com/Manual/SL-PlatformDifferences.html
+                if (_ProjectionParams.x < 0) { position_cs.y = -position_cs.y; }
+                return float4(position_cs, UNITY_NEAR_CLIP_VALUE, 1);
+            }
+
+            struct PixelData {
+                float4 position : SV_POSITION;
+                half4 data : DATA;
+                UNITY_VERTEX_OUTPUT_STEREO
+
+                static void emit(inout PointStream<PixelData> stream, uint2 coordinates, half4 data) {
+                    PixelData output;
+                    UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
+                    output.position = target_pixel_to_cs(coordinates);
+                    output.data = data;
+                    stream.Append(output);
+                }
+            };
+
+            void vertex_stage (MeshData input, out MeshData output) {
+                UNITY_SETUP_INSTANCE_ID(input);
+                UNITY_TRANSFER_INSTANCE_ID(input, output);
+            }
+            
+            half4 fragment_stage (PixelData pixel) : SV_Target {
+                UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(pixel);
+                return pixel.data;
+            }
+
+            float3 quaternion_anti_rotate(float4 q, float3 v) {
+                return v + 2.0 * cross(q.xyz, cross(q.xyz, v) - q.w * v);
+            }
+
+            [maxvertexcount(2)]
+            void geometry_stage(point MeshData input[1], uint primitive_id : SV_PrimitiveID, inout PointStream<PixelData> stream) {
+                UNITY_SETUP_INSTANCE_ID(input[0]);
+
+                if(primitive_id == 0) {
+                    half4 pixels[2];
+
+                    if(_VRChatCameraMode == 0) {
+                        #ifdef USING_STEREO_MATRICES
+                        // Set pixels with VS eye offsets
+                        pixels[0] = half4(quaternion_anti_rotate(_VRChatScreenCameraRot, unity_StereoWorldSpaceCameraPos[0] - _VRChatScreenCameraPos), 0);
+                        pixels[1] = half4(quaternion_anti_rotate(_VRChatScreenCameraRot, unity_StereoWorldSpaceCameraPos[1] - _VRChatScreenCameraPos), 0);
+                        #else
+                        pixels[0] = half4(0, 0, 0, 0);
+                        pixels[1] = half4(0, 0, 0, 0);
+                        #endif
+                    } else {
+                        // Copy pixels from grabpass to grabpass
+                        pixels[0] = _Lereldarion_Portal_Seal_GrabPass[uint2(0, 0)];
+                        pixels[1] = _Lereldarion_Portal_Seal_GrabPass[uint2(1, 0)];
+                    }
+
+                    PixelData::emit(stream, uint2(0, 0), pixels[0]);
+                    PixelData::emit(stream, uint2(1, 0), pixels[1]);
+                }
+            }
+            ENDCG
+        }
+
         GrabPass {
             "_Lereldarion_Portal_Seal_GrabPass"
             Name "Portal Ids"
@@ -23,7 +119,6 @@ Shader "Lereldarion/Portal/Seal Interface" {
             // Generate fragment calls for all useful pixels :
             // - for camera in portal space, fullscreen, and discard for exits
             // - for camera in world, generate quads at portal positions, but try avoiding overdraw using stencil bit ("pixel has been done").
-            
             Cull Off
             ZTest Always
             ZWrite On
@@ -40,9 +135,11 @@ Shader "Lereldarion/Portal/Seal Interface" {
             CGPROGRAM
             #pragma target 5.0
             #pragma multi_compile_instancing
+            #pragma vertex vertex_stage
+            #pragma geometry geometry_stage
+            #pragma fragment fragment_stage
 
             #include "UnityCG.cginc"
-
             #include "portal.hlsl"
 
             uniform Texture2D<uint4> _Portal_State;
@@ -52,10 +149,6 @@ Shader "Lereldarion/Portal/Seal Interface" {
             uniform Texture2D<float4> _Lereldarion_Portal_Seal_GrabPass;
             uniform float4 _Lereldarion_Portal_Seal_GrabPass_TexelSize;
 
-            #pragma vertex vertex_stage
-            #pragma geometry geometry_stage
-            #pragma fragment fragment_stage
-            
             struct MeshData {
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };

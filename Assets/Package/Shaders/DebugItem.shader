@@ -18,15 +18,14 @@ Shader "Lereldarion/Portal/DebugItem" {
             CGPROGRAM
             #pragma target 5.0
             #pragma multi_compile_instancing
+            #pragma vertex vertex_stage
+            #pragma fragment fragment_stage
 
             #include "UnityCG.cginc"
-
             #include "portal.hlsl"
 
             uniform Texture2D<uint4> _Portal_State;
-
-            #pragma vertex vertex_stage
-            #pragma fragment fragment_stage
+            uniform float _VRChatCameraMode;
             
             struct MeshData {
                 float3 position : POSITION;
@@ -48,10 +47,7 @@ Shader "Lereldarion/Portal/DebugItem" {
             
             uniform float _Camera_In_Portal;
             uniform int _Item_Portal_State;
-
             uniform half4 _Color;
-
-            uniform float _VRChatCameraMode;
 
             half4 fragment_stage (FragmentData input) : SV_Target {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);

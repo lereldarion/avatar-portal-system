@@ -256,6 +256,7 @@ Shader "Lereldarion/Portal/Seal Interface" {
 
                 // Scan portal for intersections
                 uint intersect_count = 0;
+                float max_intersection_ray_distance = 0;
                 [loop] while(input.portal_mask) {
                     uint index = pop_active_portal(input.portal_mask);
                     PortalPixel0 p0 = PortalPixel0::decode(_Portal_State, index);
@@ -265,7 +266,7 @@ Shader "Lereldarion/Portal/Seal Interface" {
                     float ray_distance;
                     if(portal.ray_intersect(_WorldSpaceCameraPos, ray_ws, ray_distance)) {
                         intersect_count += 1;
-                        // TODO handle distance
+                        max_intersection_ray_distance = max(max_intersection_ray_distance, ray_distance);
                     }
                 }
 
@@ -275,8 +276,14 @@ Shader "Lereldarion/Portal/Seal Interface" {
                     discard;
                 }
                 
-                // TODO depth logic
-                output_depth = UNITY_NEAR_CLIP_VALUE;
+                // Depth logic : use the depth of the last portal intersection, which must go from world to portal.
+                // Otherwise it would have been discarded.
+                float3 last_intersection_vs = UnityWorldToViewPos(_WorldSpaceCameraPos + ray_ws * max_intersection_ray_distance);
+                last_intersection_vs.z = min(last_intersection_vs.z, -_ProjectionParams.y); // Ensure we are at near plane at minimum ; Z axis is ]-inf,0]
+                float4 last_intersection_cs = UnityViewToClipPos(last_intersection_vs);
+                output_depth = last_intersection_cs.z / last_intersection_cs.w;
+
+                // TODO portal visuals
                 return half4(0, 0, 0, 1);
             }
             ENDCG

@@ -289,6 +289,10 @@ PrefabInstance:
         type: 3}
       insertIndex: -1
       addedObject: {fileID: 187105566}
+    - targetCorrespondingSourceObject: {fileID: 827075974287967996, guid: f81e8172c337a714894d6fdbd0900d8d,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1863416958}
   m_SourcePrefab: {fileID: 100100000, guid: f81e8172c337a714894d6fdbd0900d8d, type: 3}
 --- !u!1 &187105562 stripped
 GameObject:
@@ -2077,6 +2081,27 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1975532964}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1863416956 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 827075974287967996, guid: f81e8172c337a714894d6fdbd0900d8d,
+    type: 3}
+  m_PrefabInstance: {fileID: 187105561}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1863416958
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1863416956}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 15d5f714a1795734188cbfa4f6ff0479, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Radius: 0.22
+  Position: {x: 0, y: 0, z: 0}
+  Parent: {fileID: 0}
 --- !u!1 &1876998512
 GameObject:
   m_ObjectHideFlags: 0
@@ -2242,6 +2267,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1263654404ae4a94aad26f8067c0ab63, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  ScanRoot: {fileID: 562698861}
   Update: {fileID: 2100000, guid: 59415f696a0549344b8959f6743658dc, type: 2}
   Camera0: {fileID: 1534092763}
   Camera1: {fileID: 1578434701}

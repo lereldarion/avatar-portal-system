@@ -5,10 +5,15 @@ namespace Lereldarion.Portal
 {
     /// <summary>
     /// Root of a portal system.
+    /// Upload-time hooks will generate a system control <c>SkinnedMeshRenderer</c> at this transform.
     /// </summary>
     [DisallowMultipleComponent]
     public class PortalSystem : MonoBehaviour, IEditorOnly
     {
+        [Tooltip("Override root of component scan ; if not defined use the portal system transform")]
+        public Transform ScanRoot = null;
+
+        [Header("System update elements")]
         [Tooltip("Update loop material")]
         public Material Update;
         public Camera Camera0;

@@ -58,20 +58,19 @@ namespace Lereldarion.Portal
             public Transform transform;
             /// <summary>Override for position within transform</summary>
             public Vector3 localPosition = Vector3.zero;
-            public Vector3 normal = Vector3.zero;
-            public Vector3 tangent = Vector3.zero;
-            /// <summary>
-            /// x is the type of object. See VertexType.
-            /// </summary>
+            public Vector3 normal = Vector3.forward;
+            public Vector3 tangent = Vector3.right;
+            /// <summary>x is the type of object (<see cref="VertexType"/>)</summary>
             public Vector2 uv0;
         };
 
         private enum VertexType
         {
-            /// <summary>For points that force mesh bounds</summary>
+            /// <summary>Point to force occlusion on update cameras</summary>
             Ignored = 0,
             QuadPortal = 1,
             EllipsePortal = 2,
+            MeshProbe = 3,
         }
 
         /// <summary>
@@ -84,11 +83,13 @@ namespace Lereldarion.Portal
         {
             List<Mesh> generated_meshes = new List<Mesh>();
             Transform root = system.transform;
+            Transform scan_root = system.ScanRoot ?? root;
 
             // Scan portal system components
             var vertices = new List<Vertex>();
             var context = new Context { Animator = animator, System = system, Vertices = vertices };
-            foreach (var portal in root.GetComponentsInChildren<QuadPortal>(true)) { SetupQuadPortal(portal, context); }
+            foreach (var portal in scan_root.GetComponentsInChildren<QuadPortal>(true)) { SetupQuadPortal(portal, context); }
+            foreach (var probe in scan_root.GetComponentsInChildren<PortalMeshProbe>(true)) { SetupMeshProbe(probe, context); }
 
             // Make system skinned mesh
             {
@@ -183,18 +184,16 @@ namespace Lereldarion.Portal
             public PortalSystem System;
             public List<Vertex> Vertices;
             public int PortalCount = 0;
+            public int ProbeCount = 0;
         }
         private class AnimatorContext
         {
             public AacFlBase Aac;
             public AacFlController Controller;
-
-            private int id = 0;
-            public int UniqueId() { return id++; }
         }
 
         /// <summary>
-        /// Add a portal to the system.
+        /// Generate a system mesh point for the portal
         /// </summary>
         /// <param name="portal">Portal descriptor</param>
         /// <param name="context">Data of the current portal system being built</param>
@@ -214,20 +213,27 @@ namespace Lereldarion.Portal
             Object.DestroyImmediate(portal); // Cleanup components
         }
 
-        static private System.Action<AacFlEditClip> SetConstraintActive(VRC.Dynamics.VRCConstraintBase constraint, bool active)
+        /// <summary>
+        /// Generate a system mesh point for the mesh probe
+        /// </summary>
+        /// <param name="probe">Probe descriptor</param>
+        /// <param name="context">Data of the current portal system being built</param>
+        private void SetupMeshProbe(PortalMeshProbe probe, Context context)
         {
-            return clip => { clip.Animates(constraint, "IsActive").WithOneFrame(active ? 1 : 0); };
-        }
+            int probe_id = context.ProbeCount; context.ProbeCount += 1;
 
-        static private System.Action<AacFlEditClip> SetConstraintActiveSource(VRC.Dynamics.VRCConstraintBase constraint, int active_source)
-        {
-            return clip =>
+            context.Vertices.Add(new Vertex
             {
-                for (int i = 0; i < constraint.Sources.Count; i += 1)
-                {
-                    clip.Animates(constraint, $"Sources.source{i}.Weight").WithOneFrame(i == active_source ? 1 : 0);
-                }
-            };
+                transform = probe.transform,
+                localPosition = probe.Position,
+                normal = new Vector3(probe.Radius, 0, 0), // Retrieve scaled radius from normal length
+                uv0 = new Vector2((float)VertexType.MeshProbe, (float)probe_id),
+            });
+
+            // TODO store ids in meshes uvs
+            // TODO handle parent field
+
+            Object.DestroyImmediate(probe); // Cleanup components
         }
     }
 }

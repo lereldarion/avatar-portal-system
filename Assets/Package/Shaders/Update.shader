@@ -120,14 +120,14 @@ Shader "Lereldarion/Portal/Update" {
                 float3 position : POSITION;
                 float3 normal : NORMAL;
                 float3 tangent : TANGENT;
-                float2 uv0 : TEXCOORD0;
+                float4 uv0 : TEXCOORD0;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
             struct WorldMeshData {
                 float3 position : W_POSITION;
                 float3 normal : W_NORMAL;
                 float3 tangent : W_TANGENT;
-                float2 uv0 : UV0;
+                float4 uv0 : UV0;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
             struct PixelData {
@@ -185,6 +185,10 @@ Shader "Lereldarion/Portal/Update" {
                         portal.encode(pixels);
                         PixelData::emit(stream, uint2(1, portal_id + 32), pixels[0]);
                         PixelData::emit(stream, uint2(2, portal_id + 32), pixels[1]);
+                        break;
+                    }
+                    case 3: {
+                        // TODO output mesh probe config
                         break;
                     }
                     default: break;

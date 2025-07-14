@@ -61,7 +61,7 @@ namespace Lereldarion.Portal
             public Vector3 normal = Vector3.forward;
             public Vector3 tangent = Vector3.right;
             /// <summary>x is the type of object (<see cref="VertexType"/>)</summary>
-            public Vector2 uv0;
+            public Vector3 uv0;
         };
 
         private enum VertexType
@@ -89,7 +89,7 @@ namespace Lereldarion.Portal
             var vertices = new List<Vertex>();
             var context = new Context { Animator = animator, System = system, Vertices = vertices };
             foreach (var portal in scan_root.GetComponentsInChildren<QuadPortal>(true)) { SetupQuadPortal(portal, context); }
-            foreach (var probe in scan_root.GetComponentsInChildren<PortalMeshProbe>(true)) { SetupMeshProbe(probe, context); }
+            SetupMeshProbes(scan_root, context);
 
             // Make system skinned mesh
             {
@@ -97,7 +97,7 @@ namespace Lereldarion.Portal
                 vertices.Add(new Vertex
                 {
                     transform = context.System.transform,
-                    uv0 = new Vector2((float) VertexType.Ignored, 0),
+                    uv0 = new Vector3((float)VertexType.Ignored, 0, 0),
                 });
 
                 Mesh mesh = new Mesh();
@@ -184,7 +184,7 @@ namespace Lereldarion.Portal
             public PortalSystem System;
             public List<Vertex> Vertices;
             public int PortalCount = 0;
-            public int ProbeCount = 0;
+            public int MeshProbeCount = 0;
         }
         private class AnimatorContext
         {
@@ -207,33 +207,56 @@ namespace Lereldarion.Portal
                 transform = portal.transform,
                 normal = new Vector3(portal.Size.x, 0, 0),
                 tangent = new Vector3(0, portal.Size.y, 0),
-                uv0 = new Vector2((float)vertex_type, (float)portal_id),
+                uv0 = new Vector3((float)vertex_type, (float)portal_id, 0),
             });
 
             Object.DestroyImmediate(portal); // Cleanup components
         }
 
         /// <summary>
-        /// Generate a system mesh point for the mesh probe
+        /// Generate a system mesh point for every mesh probe.
+        /// This is 2-pass to establish parent links properly.
         /// </summary>
-        /// <param name="probe">Probe descriptor</param>
+        /// <param name="scan_root">Transform to start scanning from</param>
         /// <param name="context">Data of the current portal system being built</param>
-        private void SetupMeshProbe(PortalMeshProbe probe, Context context)
+        private void SetupMeshProbes(Transform scan_root, Context context)
         {
-            int probe_id = context.ProbeCount; context.ProbeCount += 1;
+            var probe_vertex_ids = new Dictionary<PortalMeshProbe, int>();
 
-            context.Vertices.Add(new Vertex
+            // Initial scan, create vertices without defined parents.
+            foreach (PortalMeshProbe probe in scan_root.GetComponentsInChildren<PortalMeshProbe>(true))
             {
-                transform = probe.transform,
-                localPosition = probe.Position,
-                normal = new Vector3(probe.Radius, 0, 0), // Retrieve scaled radius from normal length
-                uv0 = new Vector2((float)VertexType.MeshProbe, (float)probe_id),
-            });
+                int probe_id = context.MeshProbeCount; context.MeshProbeCount += 1;
 
-            // TODO store ids in meshes uvs
-            // TODO handle parent field
+                probe_vertex_ids.Add(probe, context.Vertices.Count);
+                context.Vertices.Add(new Vertex
+                {
+                    transform = probe.transform,
+                    localPosition = probe.LocalPosition,
+                    // Retrieve scaled radius from normal length
+                    normal = new Vector3(probe.Radius, 0, 0),
+                    // Start with "null" (-1) parent id. Will be filled later when all probes have been seen.
+                    uv0 = new Vector3((float)VertexType.MeshProbe, (float)probe_id, -1f),
+                });
+            }
+            
+            // Finalize parent links
+            foreach (var (probe, vertex_id) in probe_vertex_ids)
+            {
+                PortalMeshProbe parent = probe.Parent;
+                if (parent != null)
+                {
+                    int parent_probe_vertex_id = probe_vertex_ids[parent];
+                    float parent_probe_id = context.Vertices[parent_probe_vertex_id].uv0.y;
+                    context.Vertices[vertex_id].uv0.z = parent_probe_id;
+                }
+            }
 
-            Object.DestroyImmediate(probe); // Cleanup components
+            // Cleanup components
+            foreach (var probe in probe_vertex_ids.Keys)
+            {
+                Object.DestroyImmediate(probe);
+            }
         }
     }
 }

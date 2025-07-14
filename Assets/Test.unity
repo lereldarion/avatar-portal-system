@@ -293,6 +293,10 @@ PrefabInstance:
         type: 3}
       insertIndex: -1
       addedObject: {fileID: 1863416958}
+    - targetCorrespondingSourceObject: {fileID: -2779099152873015741, guid: f81e8172c337a714894d6fdbd0900d8d,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1377221898}
   m_SourcePrefab: {fileID: 100100000, guid: f81e8172c337a714894d6fdbd0900d8d, type: 3}
 --- !u!1 &187105562 stripped
 GameObject:
@@ -1453,6 +1457,27 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 187105561}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1377221897 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: -2779099152873015741, guid: f81e8172c337a714894d6fdbd0900d8d,
+    type: 3}
+  m_PrefabInstance: {fileID: 187105561}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1377221898
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1377221897}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 15d5f714a1795734188cbfa4f6ff0479, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Radius: 0.28
+  LocalPosition: {x: 0, y: 0.1, z: 0}
+  OverrideParent: {fileID: 0}
 --- !u!1 &1469360259
 GameObject:
   m_ObjectHideFlags: 0
@@ -2100,8 +2125,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Radius: 0.22
-  Position: {x: 0, y: 0, z: 0}
-  Parent: {fileID: 0}
+  LocalPosition: {x: 0, y: 0, z: 0}
+  OverrideParent: {fileID: 0}
 --- !u!1 &1876998512
 GameObject:
   m_ObjectHideFlags: 0

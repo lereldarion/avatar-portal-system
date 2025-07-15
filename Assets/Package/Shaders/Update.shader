@@ -20,6 +20,7 @@ Shader "Lereldarion/Portal/Update" {
         [ToggleUI] _Portal_Camera_Force_World("Force camera to world", Integer) = 0
 
         _Portal_Count("Portal count to scan", Integer) = 0
+        _Mesh_Probe_Count("Mesh portal count to update", Integer) = 0
         _Valid_Movement_Max_Distance("Maximum distance allowed to consider a movement legit (no TP)", Float) = 1
     }
     SubShader {
@@ -188,7 +189,18 @@ Shader "Lereldarion/Portal/Update" {
                         break;
                     }
                     case 3: {
-                        // TODO output mesh probe config
+                        // Mesh probe config
+                        MeshProbeConfig probe;
+                        probe.position = input.position;
+                        probe.radius = length(input.normal);
+                        float parent = input.uv0.z;
+                        if(parent < 0) {
+                            probe.parent = MeshProbeConfig::no_parent;
+                        } else {
+                            probe.parent = min((uint) parent, 0xFFFF);
+                        }
+                        uint id = input.uv0.y;
+                        PixelData::emit(stream, uint2(3 + id / 32, id % 32 + 32), probe.encode());
                         break;
                     }
                     default: break;
@@ -221,6 +233,7 @@ Shader "Lereldarion/Portal/Update" {
             uniform uint _Portal_System_Enabled;
             uniform uint _Portal_Camera_Force_World;
             uniform uint _Portal_Count;
+            uniform uint _Mesh_Probe_Count;
             uniform float _Valid_Movement_Max_Distance;
             
             struct MeshData {
@@ -269,10 +282,11 @@ Shader "Lereldarion/Portal/Update" {
                 if(!(primitive_id == 0 && rendering_in_orthographic_camera_with_far_plane(_Camera1_FarPlane))) { return; }
 
                 // Max supported size for now, safety against bad value
-                _Portal_Count = min(_Portal_Count, 32);
+                _Portal_Count = min(_Portal_Count, 31);
 
                 Header header = Header::decode(_Portal_RT0);
                 header.is_enabled = _Portal_System_Enabled;
+                uint old_portal_mask = header.portal_mask;
                 header.portal_mask = 0x0;
                 
                 // Update camera positions
@@ -302,7 +316,61 @@ Shader "Lereldarion/Portal/Update" {
                     PixelData::emit(stream, uint2(2, instance), _Portal_RT0[uint2(2, instance + 32)]);
                 }
 
-                // TODO update portal probes of line k
+                // Update portal probes of line "instance"
+                uint active_portals_old_new = old_portal_mask | header.portal_mask;
+                for(uint column = 0; column * 32 + instance < _Mesh_Probe_Count; column += 1) {
+                    MeshProbeConfig config = MeshProbeConfig::decode(_Portal_RT0[uint2(3 + column, instance + 32)]);
+                    MeshProbeState state = MeshProbeState::decode(_Portal_RT0[uint2(3 + column, instance)]);
+
+                    bool has_parent = false;
+                    MeshProbeState parent_state = (MeshProbeState) 0; // Read only if has_parent, but compiler cannot prove it and complains if not initialized.
+                    if(config.parent != MeshProbeConfig::no_parent) {
+                        parent_state = MeshProbeState::decode(_Portal_RT0, config.parent);
+                        has_parent = true;
+                    }
+
+                    // Scan portals once and gather all relevant intersection data
+                    uint portal_mask = active_portals_old_new;
+                    uint link_intersection_count = 0;
+                    uint movement_intersection_count = 0;
+                    state.traversing_portal_mask = 0x0;
+                    [loop] while(portal_mask) {
+                        uint index = pop_active_portal(portal_mask);
+                        uint bit = 0x1 << index;
+                        Portal old_portal = Portal::decode(_Portal_RT0, index);
+                        Portal new_portal = Portal::decode(_Portal_RT0, index + 32);
+
+                        if(has_parent && (bit & old_portal_mask)) {
+                            if(old_portal.segment_intersect(state.position, parent_state.position)) {
+                                link_intersection_count += 1;
+                            }
+                        }
+                        if(bit & portals_with_valid_movement) {
+                            movement_intersection_count += Portal::movement_intersect(old_portal, new_portal, state.position, config.position);
+                        }
+                        if(bit & header.portal_mask) {
+                            // TODO project to new plane, check in shape, check radius, set traversing_mask bit
+                            // Need to better see what to do with this field in meshes
+                        }
+                    }
+
+                    if(has_parent) {
+                        // Fix incoherent states : link to parent can only have different state if explained by portal intersection.
+                        // This is done on old state because this is the only time where we have all probes (current and parent) of the same frame.
+                        bool state_are_different = state.in_portal != parent_state.in_portal;
+                        if(state_are_different != bool(link_intersection_count & 0x1)) {
+                            // Incoherence, reset to parent
+                            state.in_portal = parent_state.in_portal;
+                        }
+                    }
+
+                    // New state
+                    if(movement_intersection_count & 0x1) {
+                        state.in_portal = !state.in_portal;
+                    }
+                    state.position = config.position;
+                    PixelData::emit(stream, uint2(3 + column, instance), state.encode());
+                }
 
                 if(instance == 0) {
                     if(_Portal_Camera_Force_World) {

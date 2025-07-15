@@ -11,6 +11,7 @@
 // Portal `i` is encoded by 2 f32x4 pixels
 // - pixel0 at (1, i) = uint4 as float4(wpos.xyz, w = radius^2)
 // - pixel1 at (2, i) = x/y axis as f16x6 in u16x6 in u32x3. is_ellipse as bit0 in w.
+// Mesh probe : 1 pixel per probe state.
 
 struct Header {
     bool is_enabled;
@@ -46,13 +47,7 @@ struct PortalPixel0 {
     bool is_enabled() { return radius_sq > 0; }
     bool fast_intersect(float3 origin, float3 end);
 
-    static PortalPixel0 decode(uint4 pixel) {
-        float4 pixel_fp = asfloat(pixel);
-        PortalPixel0 o;
-        o.position = pixel_fp.xyz;
-        o.radius_sq = pixel_fp.w;
-        return o;
-    }
+    static PortalPixel0 decode(uint4 pixel);
     static PortalPixel0 decode(Texture2D<uint4> tex, uint index) { return decode(tex[uint2(1, index)]); }
 };
 
@@ -85,6 +80,26 @@ struct Portal {
     static Portal decode(uint4 pixels[2]) { return decode(PortalPixel0::decode(pixels[0]), pixels[1]); }
     static Portal decode(PortalPixel0 pixel0, Texture2D<uint4> tex, uint index) { return decode(pixel0, tex[uint2(2, index)]); }
     static Portal decode(Texture2D<uint4> tex, uint index) { return decode(PortalPixel0::decode(tex, index), tex, index); }
+};
+
+struct MeshProbeConfig {
+    float3 position;
+    float radius;
+    uint parent; // 0xFFFF (u16::MAX) if no parent.
+
+    static const uint no_parent = 0xFFFF;
+
+    uint4 encode();
+    static MeshProbeConfig decode(uint4 pixel);
+};
+struct MeshProbeState {
+    float3 position;
+    bool in_portal; // 31th bit of w.
+    uint traversing_portal_mask; // supports 31 bits/portals only.
+    
+    uint4 encode();
+    static MeshProbeState decode(uint4 pixel);
+    static MeshProbeState decode(Texture2D<uint4> tex, uint id) { return decode(tex[uint2(3 + id / 32, id % 32)]); }
 };
 
 ///////////////////////////////////////////////////////////////////////////
@@ -217,13 +232,21 @@ uint4 Header::encode() {
 }
 static Header Header::decode(uint4 pixel) { 
     Header h;
-    h.is_enabled = pixel.r & 0x1;
-    h.camera_in_portal[0] = pixel.r & 0x2;
-    h.camera_in_portal[1] = pixel.r & 0x4;
-    h.stereo_eye_in_portal[0] = pixel.r & 0x8;
-    h.stereo_eye_in_portal[1] = pixel.r & 0x10;
-    h.portal_mask = pixel.g;
+    h.is_enabled = pixel.x & 0x1;
+    h.camera_in_portal[0] = pixel.x & 0x2;
+    h.camera_in_portal[1] = pixel.x & 0x4;
+    h.stereo_eye_in_portal[0] = pixel.x & 0x8;
+    h.stereo_eye_in_portal[1] = pixel.x & 0x10;
+    h.portal_mask = pixel.y;
     return h;
+}
+
+static PortalPixel0 PortalPixel0::decode(uint4 pixel) {
+    float4 pixel_fp = asfloat(pixel);
+    PortalPixel0 o;
+    o.position = pixel_fp.xyz;
+    o.radius_sq = pixel_fp.w;
+    return o;
 }
 
 void Portal::encode(out uint4 pixels[2]) {
@@ -244,6 +267,30 @@ static Portal Portal::decode(PortalPixel0 pixel0, uint4 pixel1) {
 
     p.finalize();
     return p;
+}
+
+uint4 MeshProbeConfig::encode() {
+    uint radius_and_parent = f32tof16(radius) | ((parent & 0xFFFF) << 16);
+    return uint4(asuint(position), radius_and_parent);
+}
+static MeshProbeConfig MeshProbeConfig::decode(uint4 pixel) {
+    MeshProbeConfig probe;
+    probe.position = asfloat(pixel.xyz);
+    probe.radius = f16tof32(pixel.w & 0xFFFF);
+    probe.parent = (pixel.w >> 16) & 0xFFFF;
+    return probe;
+}
+
+uint4 MeshProbeState::encode() {
+    uint bits = (traversing_portal_mask & 0x7FFFFFFF) | (in_portal ? 0x80000000 : 0x0);
+    return uint4(asuint(position), bits);
+}
+static MeshProbeState MeshProbeState::decode(uint4 pixel) {
+    MeshProbeState probe;
+    probe.position = asfloat(pixel.xyz);
+    probe.traversing_portal_mask = pixel.w & 0x7FFFFFFF;
+    probe.in_portal = pixel.w & 0x80000000;
+    return probe;
 }
 
 ///////////////////////////////////////////////////////////////////////////

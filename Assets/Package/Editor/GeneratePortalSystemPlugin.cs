@@ -140,6 +140,7 @@ namespace Lereldarion.Portal
             }
 
             system.Update.SetInteger("_Portal_Count", context.PortalCount);
+            system.Update.SetInteger("_Mesh_Probe_Count", context.MeshProbeCount);
             system.Update.SetFloat("_Camera0_FarPlane", context.System.Camera0.farClipPlane);
             system.Update.SetFloat("_Camera1_FarPlane", context.System.Camera1.farClipPlane);
 

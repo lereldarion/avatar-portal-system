@@ -75,6 +75,7 @@ struct Portal {
     bool ray_intersect(float3 origin, float3 ray, out float ray_distance);
     static Portal lerp(Portal a, Portal b, float t);
     static uint movement_intersect(Portal p0, Portal p1, float3 v0, float3 v1);
+    float distance_to_point(float3 p);
     
     void encode(out uint4 pixels[2]);
     static Portal decode(PortalPixel0 pixel0, uint4 pixel1);
@@ -217,6 +218,22 @@ static uint Portal::movement_intersect(Portal p0, Portal p1, float3 v0, float3 v
     return intersect_count;
 }
 
+float Portal::distance_to_point(float3 p) {
+    const float3 v = p - position;
+    const float2 axis_projections = float2(dot(x_axis, v), dot(y_axis, v));
+    const float2 axis_length_sq = float2(dot(x_axis, x_axis), dot(y_axis, y_axis));
+    const float2 normalized_axis_projections = axis_projections / axis_length_sq;
+    if(is_ellipse) {
+        const float ellipse_radius_factor = length(normalized_axis_projections); // 1 on ellipse, <1 interior, >1 exterior
+        const float clamp_to_ellipse = ellipse_radius_factor > 1 ? 1 / ellipse_radius_factor : 1;
+        const float3 closest_portal_point = clamp_to_ellipse * (normalized_axis_projections.x * x_axis + normalized_axis_projections.y * y_axis);
+        return distance(closest_portal_point, v);
+    } else /* quad */ {
+        const float2 clamped_axis_coords = clamp(normalized_axis_projections, -1, 1);
+        const float3 closest_portal_point = clamped_axis_coords.x * x_axis + clamped_axis_coords.y * y_axis;
+        return distance(closest_portal_point, v);
+    }
+}
 
 ///////////////////////////////////////////////////////////////////////////
 // CRT encodings

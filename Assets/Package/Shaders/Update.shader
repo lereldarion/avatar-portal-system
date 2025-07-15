@@ -350,8 +350,10 @@ Shader "Lereldarion/Portal/Update" {
                             movement_intersection_count += Portal::movement_intersect(old_portal, new_portal, state.position, config.position);
                         }
                         if(bit & header.portal_mask) {
-                            // TODO project to new plane, check in shape, check radius, set traversing_mask bit
-                            // Need to better see what to do with this field in meshes
+                            if(new_portal.distance_to_point(config.position) < config.radius) {
+                                // Mark portal as being possibly traversed
+                                state.traversing_portal_mask |= bit;
+                            }
                         }
                     }
 

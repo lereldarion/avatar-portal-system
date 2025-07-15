@@ -78,19 +78,18 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
                 return v + 2.0 * cross(q.xyz, cross(q.xyz, v) + q.w * v);
             }
             
-            [maxvertexcount(128)]
-            void geometry_stage(point MeshData input[1], uint primitive_id : SV_PrimitiveID, inout LineStream<LinePoint> stream) {
+            [instance(32)]
+            [maxvertexcount(9 + 6)]
+            void geometry_stage(point MeshData input[1], uint primitive_id : SV_PrimitiveID, uint instance : SV_GSInstanceID, inout LineStream<LinePoint> stream) {
                 UNITY_SETUP_INSTANCE_ID(input[0]);
-
                 if(primitive_id > 0) { return; }
 
-                Header header = Header::decode(_Portal_State);
-                [loop] while(header.portal_mask) {
-                    uint index = pop_active_portal(header.portal_mask);
-                    Portal p = Portal::decode(_Portal_State, index);
+                const Header header = Header::decode(_Portal_State);
 
-                    LineDrawer drawer = LineDrawer::init(hue_shift_yiq(half3(1, 0, 0), index / 8.0 * UNITY_TWO_PI));
-                    stream.RestartStrip();
+                // Draw portals
+                if((0x1 << instance) & header.portal_mask) {
+                    Portal p = Portal::decode(_Portal_State, instance);
+                    LineDrawer drawer = LineDrawer::init(hue_shift_yiq(half3(1, 0, 0), instance / 8.0 * UNITY_TWO_PI));
                     if(!p.is_ellipse) {
                         drawer.solid_ws(stream, p.position - p.x_axis - p.y_axis);
                         drawer.solid_ws(stream, p.position + p.x_axis - p.y_axis);
@@ -105,17 +104,16 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
                         }
                     }
                 }
-
+                
                 // Cameras
-                for(uint index = 0; index < 2; index += 1) {
-                    float3 position = CameraPosition::decode(_Portal_State, index);
-
-                    float4 rotation = index == 0 ? _VRChatScreenCameraRot : _VRChatPhotoCameraRot;
+                if(instance < 2) {
+                    const float3 position = CameraPosition::decode(_Portal_State, instance);
+                    const float4 rotation = instance == 0 ? _VRChatScreenCameraRot : _VRChatPhotoCameraRot;
                     
                     // Only display camera position if not the current one.
-                    float s = 0.1;
+                    const float s = 0.1;
                     if(distance(position, _WorldSpaceCameraPos) > s) {
-                        bool in_portal = header.camera_in_portal[index];
+                        const bool in_portal = header.camera_in_portal[instance];
                         LineDrawer drawer = LineDrawer::init(float3(in_portal, !in_portal, 0));
                         stream.RestartStrip();
                         drawer.solid_ws(stream, position + quaternion_rotate(rotation, -float3(s, 0, 0)));
@@ -128,6 +126,8 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
                         drawer.solid_ws(stream, position + quaternion_rotate(rotation,  float3(0, 0, s)));
                     }
                 }
+
+                // Mesh Probes
             }
             ENDCG
         }

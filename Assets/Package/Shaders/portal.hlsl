@@ -18,6 +18,7 @@ struct Header {
     bool camera_in_portal[2];
     bool stereo_eye_in_portal[2];
     uint portal_mask;
+    uint mesh_probe_count;
 
     bool camera_portal_state(float vrc_camera_mode);
 
@@ -27,7 +28,7 @@ struct Header {
 };
 
 uint pop_active_portal(inout uint portal_mask) {
-    uint index = firstbitlow(portal_mask);
+    const uint index = firstbitlow(portal_mask);
     portal_mask ^= 0x1 << index; // Mask as seen
     return index;
 }
@@ -108,20 +109,20 @@ struct MeshProbeState {
 // Fast and avoids loading the second pixel if rejected.
 // On success use the full portal segment intersect below.
 bool PortalPixel0::fast_intersect(float3 origin, float3 end) {
-    float3 ray = end - origin;
-    float3 portal_v = position - origin;
+    const float3 ray = end - origin;
+    const float3 portal_v = position - origin;
 
-    float3 projection = portal_v - dot(portal_v, ray) / dot(ray, ray) * ray;
+    const float3 projection = portal_v - dot(portal_v, ray) / dot(ray, ray) * ray;
     return dot(projection, projection) <= radius_sq;
 }
 
 // Assuming p is within the plane of the portal, do the precise shape test.
 bool Portal::is_plane_point_in_shape(float3 p) {
-    float3 v = p - position;
-    float2 axis_projections = float2(dot(x_axis, v), dot(y_axis, v));
-    float2 axis_length_sq = float2(dot(x_axis, x_axis), dot(y_axis, y_axis));
+    const float3 v = p - position;
+    const float2 axis_projections = float2(dot(x_axis, v), dot(y_axis, v));
+    const float2 axis_length_sq = float2(dot(x_axis, x_axis), dot(y_axis, y_axis));
     if(is_ellipse) {
-        float2 coords = axis_projections / axis_length_sq; // [-1, 1]
+        const float2 coords = axis_projections / axis_length_sq; // [-1, 1]
         return dot(coords, coords) <= 1;
     } else /* quad */ {
         return all(abs(axis_projections) <= axis_length_sq);
@@ -131,10 +132,10 @@ bool Portal::is_plane_point_in_shape(float3 p) {
 // Does segment / ray intersects portal precise surface (with its shape).
 // Note that we do not have to normalize normal, ray, or x/y axis at all.
 bool Portal::segment_intersect(float3 origin, float3 end, out float intersection_ray_01) {
-    float3 ray = end - origin;
+    const float3 ray = end - origin;
     // portal plane equation dot(p - position, normal) = 0
     // ray line p(t) = origin + ray * t
-    float t = dot(position - origin, normal) / dot(ray, normal);
+    const float t = dot(position - origin, normal) / dot(ray, normal);
     // t in [0, 1] <=> intersect point between [origin, end].
     if(t == saturate(t)) {
         intersection_ray_01 = t;
@@ -150,7 +151,7 @@ bool Portal::segment_intersect(float3 origin, float3 end) {
 bool Portal::ray_intersect(float3 origin, float3 ray, out float ray_distance) {
     // portal plane equation dot(p - position, normal) = 0
     // ray line p(t) = origin + ray * t
-    float t = dot(position - origin, normal) / dot(ray, normal);
+    const float t = dot(position - origin, normal) / dot(ray, normal);
     if(t >= 0) {
         ray_distance = t;
         return is_plane_point_in_shape(origin + ray * t);
@@ -177,17 +178,17 @@ static uint Portal::movement_intersect(Portal p0, Portal p1, float3 v0, float3 v
     // Interpolated point : v(t) = lerp(v0, v1, t) = v0 (1-t) + v1 t
     // Plane equation of interpolated portal : dot(v(t) - (p0 (1-t) + p1 t), n0 (1-t) + n1 t) = 0
     // Strategy is to first find t with plane intersects, restrict to solutions with t in [0,1], and check shape intersect at t.
-    float3 pv0 = v0 - p0.position;
-    float3 pv1 = v1 - p1.position;
-    float dot_pv0_n0 = dot(pv0, p0.normal);
-    float dot_pv0_n1 = dot(pv0, p1.normal);
-    float dot_pv1_n0 = dot(pv1, p0.normal);
-    float dot_pv1_n1 = dot(pv1, p1.normal);
-    float mixed_dots = dot_pv0_n1 + dot_pv1_n0;
+    const float3 pv0 = v0 - p0.position;
+    const float3 pv1 = v1 - p1.position;
+    const float dot_pv0_n0 = dot(pv0, p0.normal);
+    const float dot_pv0_n1 = dot(pv0, p1.normal);
+    const float dot_pv1_n0 = dot(pv1, p0.normal);
+    const float dot_pv1_n1 = dot(pv1, p1.normal);
+    const float mixed_dots = dot_pv0_n1 + dot_pv1_n0;
     // Plane intersect t are solution of the 2nd order equation a t^2 + b t + c = 0 with
-    float a = dot_pv0_n0 + dot_pv1_n1 - mixed_dots;
-    float b = mixed_dots - 2 * dot_pv0_n0;
-    float c = dot_pv0_n0;
+    const float a = dot_pv0_n0 + dot_pv1_n1 - mixed_dots;
+    const float b = mixed_dots - 2 * dot_pv0_n0;
+    const float c = dot_pv0_n0;
     // Gather t candidates
     float2 t_candidates = float2(-1, -1); // Invalid solutions
     if(a == 0) {
@@ -195,7 +196,7 @@ static uint Portal::movement_intersect(Portal p0, Portal p1, float3 v0, float3 v
         t_candidates[0] = -c / b;
     } else {
         // Full quadratic equation
-        float b2_m_4ac = mixed_dots * mixed_dots - 4 * dot_pv0_n0 * dot_pv1_n1; // Simpler expression with lots of cancellations applied.
+        const float b2_m_4ac = mixed_dots * mixed_dots - 4 * dot_pv0_n0 * dot_pv1_n1; // Simpler expression with lots of cancellations applied.
         if(b2_m_4ac == 0) {
             t_candidates[0] = -b / (2 * a);
         } else if(b2_m_4ac > 0) {
@@ -206,10 +207,10 @@ static uint Portal::movement_intersect(Portal p0, Portal p1, float3 v0, float3 v
     uint intersect_count = 0;
     [unroll]
     for(uint i = 0; i < 2; i += 1) {
-        float t = t_candidates[i];
+        const float t = t_candidates[i];
         if(t == saturate(t)) {
             // t in [0, 1]    
-            Portal interpolated = Portal::lerp(p0, p1, t);
+            const Portal interpolated = Portal::lerp(p0, p1, t);
             intersect_count += interpolated.is_plane_point_in_shape(lerp(v0, v1, t)) ? 1 : 0;
         }
     }
@@ -227,7 +228,7 @@ uint4 Header::encode() {
         (stereo_eye_in_portal[0] ? 0x8 : 0x0) | (stereo_eye_in_portal[1] ? 0x10 : 0x0),
         portal_mask,
         0,
-        0
+        mesh_probe_count
     );
 }
 static Header Header::decode(uint4 pixel) { 
@@ -238,11 +239,12 @@ static Header Header::decode(uint4 pixel) {
     h.stereo_eye_in_portal[0] = pixel.x & 0x8;
     h.stereo_eye_in_portal[1] = pixel.x & 0x10;
     h.portal_mask = pixel.y;
+    h.mesh_probe_count = pixel.w;
     return h;
 }
 
 static PortalPixel0 PortalPixel0::decode(uint4 pixel) {
-    float4 pixel_fp = asfloat(pixel);
+    const float4 pixel_fp = asfloat(pixel);
     PortalPixel0 o;
     o.position = pixel_fp.xyz;
     o.radius_sq = pixel_fp.w;
@@ -254,7 +256,7 @@ void Portal::encode(out uint4 pixels[2]) {
     pixels[0] = asuint(float4(position, radius_sq));
 
     // Pixel 1
-    uint3 axis_packed = (f32tof16(y_axis) << 16) | f32tof16(x_axis);
+    const uint3 axis_packed = (f32tof16(y_axis) << 16) | f32tof16(x_axis);
     pixels[1] = uint4(axis_packed, is_ellipse ? 0x1 : 0x0);
 }
 static Portal Portal::decode(PortalPixel0 pixel0, uint4 pixel1) {
@@ -270,7 +272,7 @@ static Portal Portal::decode(PortalPixel0 pixel0, uint4 pixel1) {
 }
 
 uint4 MeshProbeConfig::encode() {
-    uint radius_and_parent = f32tof16(radius) | ((parent & 0xFFFF) << 16);
+    const uint radius_and_parent = f32tof16(radius) | ((parent & 0xFFFF) << 16);
     return uint4(asuint(position), radius_and_parent);
 }
 static MeshProbeConfig MeshProbeConfig::decode(uint4 pixel) {
@@ -282,7 +284,7 @@ static MeshProbeConfig MeshProbeConfig::decode(uint4 pixel) {
 }
 
 uint4 MeshProbeState::encode() {
-    uint bits = (traversing_portal_mask & 0x7FFFFFFF) | (in_portal ? 0x80000000 : 0x0);
+    const uint bits = (traversing_portal_mask & 0x7FFFFFFF) | (in_portal ? 0x80000000 : 0x0);
     return uint4(asuint(position), bits);
 }
 static MeshProbeState MeshProbeState::decode(uint4 pixel) {

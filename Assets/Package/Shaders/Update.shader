@@ -40,7 +40,7 @@ Shader "Lereldarion/Portal/Update" {
         }
 
         float4 target_pixel_to_cs(uint2 position) {
-            float2 target_resolution = _ScreenParams.xy;
+            const float2 target_resolution = _ScreenParams.xy;
             float2 position_cs = (position * 2 - target_resolution + 1) / target_resolution; // +1 = center of pixels
             // https://docs.unity3d.com/Manual/SL-PlatformDifferences.html
             if (_ProjectionParams.x < 0) { position_cs.y = -position_cs.y; }
@@ -180,7 +180,7 @@ Shader "Lereldarion/Portal/Update" {
                         portal.y_axis = input.tangent;
                         portal.is_ellipse = vertex_type == 2;
                         portal.finalize();
-                        uint portal_id = input.uv0.y;
+                        const uint portal_id = input.uv0.y;
 
                         uint4 pixels[2];
                         portal.encode(pixels);
@@ -193,13 +193,13 @@ Shader "Lereldarion/Portal/Update" {
                         MeshProbeConfig probe;
                         probe.position = input.position;
                         probe.radius = length(input.normal);
-                        float parent = input.uv0.z;
+                        const float parent = input.uv0.z;
                         if(parent < 0) {
                             probe.parent = MeshProbeConfig::no_parent;
                         } else {
                             probe.parent = min((uint) parent, 0xFFFF);
                         }
-                        uint id = input.uv0.y;
+                        const uint id = input.uv0.y;
                         PixelData::emit(stream, uint2(3 + id / 32, id % 32 + 32), probe.encode());
                         break;
                     }
@@ -286,11 +286,12 @@ Shader "Lereldarion/Portal/Update" {
 
                 Header header = Header::decode(_Portal_RT0);
                 header.is_enabled = _Portal_System_Enabled;
-                uint old_portal_mask = header.portal_mask;
+                header.mesh_probe_count = _Mesh_Probe_Count;
+                const uint old_portal_mask = header.portal_mask;
                 header.portal_mask = 0x0;
                 
                 // Update camera positions
-                float3 new_camera_pos[2] = { _VRChatScreenCameraPos, _VRChatPhotoCameraPos };
+                const float3 new_camera_pos[2] = { _VRChatScreenCameraPos, _VRChatPhotoCameraPos };
                 if(instance < 2) {
                     PixelData::emit(stream, uint2(0, 1 + instance), CameraPosition::encode(new_camera_pos[instance]));
                 }
@@ -298,12 +299,12 @@ Shader "Lereldarion/Portal/Update" {
                 // Every thread will load the full old and new portal info and build the portal mask.
                 uint portals_with_valid_movement = 0x0;
                 [loop] for(uint index = 0; index < _Portal_Count; index += 1) {
-                    Portal new_portal = Portal::decode(_Portal_RT0, index + 32);
+                    const Portal new_portal = Portal::decode(_Portal_RT0, index + 32);
                     if(new_portal.is_enabled()) {
-                        uint bit = 0x1 << index;
+                        const uint bit = 0x1 << index;
                         header.portal_mask |= bit;
 
-                        PortalPixel0 old_portal = PortalPixel0::decode(_Portal_RT0, index);
+                        const PortalPixel0 old_portal = PortalPixel0::decode(_Portal_RT0, index);
                         if(old_portal.is_enabled() && is_movement_valid(old_portal.position, new_portal.position)) {
                             portals_with_valid_movement |= bit;
                         }
@@ -317,9 +318,9 @@ Shader "Lereldarion/Portal/Update" {
                 }
 
                 // Update portal probes of line "instance"
-                uint active_portals_old_new = old_portal_mask | header.portal_mask;
+                const uint active_portals_old_new = old_portal_mask | header.portal_mask;
                 for(uint column = 0; column * 32 + instance < _Mesh_Probe_Count; column += 1) {
-                    MeshProbeConfig config = MeshProbeConfig::decode(_Portal_RT0[uint2(3 + column, instance + 32)]);
+                    const MeshProbeConfig config = MeshProbeConfig::decode(_Portal_RT0[uint2(3 + column, instance + 32)]);
                     MeshProbeState state = MeshProbeState::decode(_Portal_RT0[uint2(3 + column, instance)]);
 
                     bool has_parent = false;
@@ -335,10 +336,10 @@ Shader "Lereldarion/Portal/Update" {
                     uint movement_intersection_count = 0;
                     state.traversing_portal_mask = 0x0;
                     [loop] while(portal_mask) {
-                        uint index = pop_active_portal(portal_mask);
-                        uint bit = 0x1 << index;
-                        Portal old_portal = Portal::decode(_Portal_RT0, index);
-                        Portal new_portal = Portal::decode(_Portal_RT0, index + 32);
+                        const uint index = pop_active_portal(portal_mask);
+                        const uint bit = 0x1 << index;
+                        const Portal old_portal = Portal::decode(_Portal_RT0, index);
+                        const Portal new_portal = Portal::decode(_Portal_RT0, index + 32);
 
                         if(has_parent && (bit & old_portal_mask)) {
                             if(old_portal.segment_intersect(state.position, parent_state.position)) {
@@ -378,8 +379,8 @@ Shader "Lereldarion/Portal/Update" {
                         header.camera_in_portal[1] = false;
                     } else {
                         // Update camera states
-                        float3 old_camera_pos[2] = { CameraPosition::decode(_Portal_RT0, 0), CameraPosition::decode(_Portal_RT0, 1) };
-                        bool update_camera[2] = {
+                        const float3 old_camera_pos[2] = { CameraPosition::decode(_Portal_RT0, 0), CameraPosition::decode(_Portal_RT0, 1) };
+                        const bool update_camera[2] = {
                             is_movement_valid(old_camera_pos[0], new_camera_pos[0]),
                             // Photo camera when disabled is set to exact (0, 0, 0), ignore it as well
                             is_movement_valid(old_camera_pos[1], new_camera_pos[1]) && all(old_camera_pos[1] != 0) && all(new_camera_pos[1] != 0),
@@ -387,9 +388,9 @@ Shader "Lereldarion/Portal/Update" {
                         
                         uint portal_mask = portals_with_valid_movement;
                         [loop] while(portal_mask) {
-                            uint index = pop_active_portal(portal_mask);
-                            Portal old_portal = Portal::decode(_Portal_RT0, index);
-                            Portal new_portal = Portal::decode(_Portal_RT0, index + 32);
+                            const uint index = pop_active_portal(portal_mask);
+                            const Portal old_portal = Portal::decode(_Portal_RT0, index);
+                            const Portal new_portal = Portal::decode(_Portal_RT0, index + 32);
     
                             [unroll] for(uint i = 0; i < 2; i += 1) {
                                 if(update_camera[i] && Portal::movement_intersect(old_portal, new_portal, old_camera_pos[i], new_camera_pos[i]) & 0x1) {
@@ -402,20 +403,20 @@ Shader "Lereldarion/Portal/Update" {
                     // Compute intersection flips between centered pos and stereo eyes.
                     header.stereo_eye_in_portal[0] = header.camera_in_portal[0];
                     header.stereo_eye_in_portal[1] = header.camera_in_portal[0];
-                    float3 stereo_eye_offsets[2] = {
+                    const float3 stereo_eye_offsets[2] = {
                         _Lereldarion_Portal_Seal_GrabPass[uint2(0, 0)].xyz,
                         _Lereldarion_Portal_Seal_GrabPass[uint2(1, 0)].xyz
                     };
                     if(length_sq(stereo_eye_offsets[0]) > 0) {
-                        float3 stereo_eye_ws[2] = {
+                        const float3 stereo_eye_ws[2] = {
                             _VRChatScreenCameraPos + quaternion_rotate(_VRChatScreenCameraRot, stereo_eye_offsets[0]),
                             _VRChatScreenCameraPos + quaternion_rotate(_VRChatScreenCameraRot, stereo_eye_offsets[1])
                         };
 
                         uint portal_mask = header.portal_mask; // Check all enabled portals at this frame.
                         [loop] while(portal_mask) {
-                            uint index = pop_active_portal(portal_mask);
-                            Portal new_portal = Portal::decode(_Portal_RT0, index + 32);
+                            const uint index = pop_active_portal(portal_mask);
+                            const Portal new_portal = Portal::decode(_Portal_RT0, index + 32);
                             [unroll] for(uint i = 0; i < 2; i += 1) {
                                 if(new_portal.segment_intersect(_VRChatScreenCameraPos, stereo_eye_ws[i])) {
                                     header.stereo_eye_in_portal[i] = !header.stereo_eye_in_portal[i];

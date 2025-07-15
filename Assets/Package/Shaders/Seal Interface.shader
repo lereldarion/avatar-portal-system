@@ -43,7 +43,7 @@ Shader "Lereldarion/Portal/Seal Interface" {
             };
 
             float4 target_pixel_to_cs(uint2 position) {
-                float2 target_resolution = _ScreenParams.xy;
+                const float2 target_resolution = _ScreenParams.xy;
                 float2 position_cs = (position * 2 - target_resolution + 1) / target_resolution; // +1 = center of pixels
                 // https://docs.unity3d.com/Manual/SL-PlatformDifferences.html
                 if (_ProjectionParams.x < 0) { position_cs.y = -position_cs.y; }
@@ -181,7 +181,7 @@ Shader "Lereldarion/Portal/Seal Interface" {
                 FragmentData output;
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
 
-                Header header = Header::decode(_Portal_State);
+                const Header header = Header::decode(_Portal_State);
                 if(header.is_enabled) {
                     output.camera_in_portal = header.camera_portal_state(_VRChatCameraMode);
                     output.portal_mask = header.portal_mask;
@@ -199,8 +199,8 @@ Shader "Lereldarion/Portal/Seal Interface" {
                         if(instance == 0) {
                             // Generate in VS close to near clip plane. Having non CS positions is essential to return to WS later.
                             // Add margins in case the matrix has some rotation/skew
-                            float quad_z = near_plane_z * 1.1; // z margin
-                            float quad_xy = quad_z * tan_half_fov * 1.1; // xy margin
+                            const float quad_z = near_plane_z * 1.1; // z margin
+                            const float quad_xy = quad_z * tan_half_fov * 1.1; // xy margin
                             
                             [unroll] for(uint i = 0; i < 4; i += 1) {
                                 quad_vs[i] = float3(quad_corners[i] * quad_xy, quad_z);
@@ -210,7 +210,7 @@ Shader "Lereldarion/Portal/Seal Interface" {
                     } else {
                         // One quad per enabled portal
                         if(instance < 32 && header.portal_mask & (0x1 << instance)) {
-                            Portal p = Portal::decode(_Portal_State, instance);
+                            const Portal p = Portal::decode(_Portal_State, instance);
 
                             // We need the quad only for the screenspace pixel position to activate, not its depth position.
                             // We need to avoid near plane clipping when we traverse.
@@ -240,16 +240,16 @@ Shader "Lereldarion/Portal/Seal Interface" {
             half4 fragment_stage (FragmentData input, out float output_depth : SV_Depth) : SV_Target {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
 
-                float3 ray_ws = mul((float3x3) unity_MatrixInvV, input.position_vs);
+                const float3 ray_ws = mul((float3x3) unity_MatrixInvV, input.position_vs);
 
                 // If pixel was a portal object, keep color and seal at the portal id stored in alpha
-                float4 grab_pass_pixel = _Lereldarion_Portal_Seal_GrabPass[_Lereldarion_Portal_Seal_GrabPass_TexelSize.zw * input.grab_pos.xy / input.grab_pos.w];
+                const float4 grab_pass_pixel = _Lereldarion_Portal_Seal_GrabPass[_Lereldarion_Portal_Seal_GrabPass_TexelSize.zw * input.grab_pos.xy / input.grab_pos.w];
                 uint portal_id;
-                if(pixel_get_depth_portal_id(grab_pass_pixel, portal_id) && input.portal_mask & (0x1 << portal_id)) {
-                    Portal p = Portal::decode(_Portal_State, portal_id);
+                if(pixel_get_depth_portal_id(grab_pass_pixel, portal_id) && bool(input.portal_mask & (0x1 << portal_id))) {
+                    const Portal p = Portal::decode(_Portal_State, portal_id);
                     float ray_distance = 0;
                     p.ray_intersect(_WorldSpaceCameraPos, ray_ws, ray_distance); // Should be success
-                    float4 intersect_cs = UnityWorldToClipPos(_WorldSpaceCameraPos + ray_ws * ray_distance);
+                    const float4 intersect_cs = UnityWorldToClipPos(_WorldSpaceCameraPos + ray_ws * ray_distance);
                     output_depth = intersect_cs.z / intersect_cs.w;
                     return half4(grab_pass_pixel.rgb, 1);
                 }
@@ -258,10 +258,10 @@ Shader "Lereldarion/Portal/Seal Interface" {
                 uint intersect_count = 0;
                 float max_intersection_ray_distance = 0;
                 [loop] while(input.portal_mask) {
-                    uint index = pop_active_portal(input.portal_mask);
-                    PortalPixel0 p0 = PortalPixel0::decode(_Portal_State, index);
+                    const uint index = pop_active_portal(input.portal_mask);
+                    const PortalPixel0 p0 = PortalPixel0::decode(_Portal_State, index);
                     if(!p0.fast_intersect(_WorldSpaceCameraPos, _WorldSpaceCameraPos + ray_ws)) { continue; }
-                    Portal portal = Portal::decode(p0, _Portal_State, index);
+                    const Portal portal = Portal::decode(p0, _Portal_State, index);
                     
                     float ray_distance;
                     if(portal.ray_intersect(_WorldSpaceCameraPos, ray_ws, ray_distance)) {
@@ -280,7 +280,7 @@ Shader "Lereldarion/Portal/Seal Interface" {
                 // Otherwise it would have been discarded.
                 float3 last_intersection_vs = UnityWorldToViewPos(_WorldSpaceCameraPos + ray_ws * max_intersection_ray_distance);
                 last_intersection_vs.z = min(last_intersection_vs.z, -_ProjectionParams.y); // Ensure we are at near plane at minimum ; Z axis is ]-inf,0]
-                float4 last_intersection_cs = UnityViewToClipPos(last_intersection_vs);
+                const float4 last_intersection_cs = UnityViewToClipPos(last_intersection_vs);
                 output_depth = last_intersection_cs.z / last_intersection_cs.w;
 
                 // TODO portal visuals

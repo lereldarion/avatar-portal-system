@@ -286,7 +286,7 @@ Shader "Lereldarion/Portal/Update" {
 
                 Header header = Header::decode(_Portal_RT0);
                 header.is_enabled = _Portal_System_Enabled;
-                header.mesh_probe_count = _Mesh_Probe_Count;
+                header.mesh_probe_count = _Mesh_Probe_Count; // Make it available because we have unused space.
                 const uint old_portal_mask = header.portal_mask;
                 header.portal_mask = 0x0;
                 
@@ -371,6 +371,7 @@ Shader "Lereldarion/Portal/Update" {
                     }
                     state.position = config.position;
                     PixelData::emit(stream, uint2(3 + column, instance), state.encode());
+                    PixelData::emit(stream, uint2(3 + column, instance + 32), config.encode()); // FIXME Expose parent for debug
                 }
 
                 if(instance == 0) {

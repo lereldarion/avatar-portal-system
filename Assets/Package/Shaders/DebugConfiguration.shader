@@ -5,13 +5,16 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
     }
     SubShader {
         Tags {
-            "Queue" = "Geometry"
+            "Queue" = "Overlay"
             "VRCFallback" = "Hidden"
             "PreviewType" = "Plane"
         }
 
         Pass {
             Name "Debug Configuration"
+
+            ZTest Always
+            ZWrite On
 
             CGPROGRAM
             #pragma target 5.0
@@ -57,14 +60,12 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
                     drawer.output.color = color;
                     return drawer;
                 }
-                
-                void solid_cs(inout LineStream<LinePoint> stream, float4 position_cs) {
-                    output.position = position_cs;
-                    stream.Append(output);
-                }
-                void solid_ws(inout LineStream<LinePoint> stream, float3 position_ws) {
-                    solid_cs(stream, UnityWorldToClipPos(position_ws));
-                }
+
+                void set_color(half3 color) { output.color = color; }
+                void solid_cs(inout LineStream<LinePoint> stream, float4 position_cs) { output.position = position_cs; stream.Append(output); }
+                void solid_ws(inout LineStream<LinePoint> stream, float3 position_ws) { solid_cs(stream, UnityWorldToClipPos(position_ws)); }
+                void solid_cs(inout LineStream<LinePoint> stream, float4 position_cs, half3 color) { set_color(color); solid_cs(stream, position_cs); }
+                void solid_ws(inout LineStream<LinePoint> stream, float3 position_ws, half3 color) { set_color(color); solid_ws(stream, position_ws); }
             };
             
             half3 hue_shift_yiq(const half3 col, const half hueAngle) {
@@ -79,17 +80,18 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
             }
             
             [instance(32)]
-            [maxvertexcount(9 + 6)]
+            [maxvertexcount(9 + 6 + 2 * 10)]
             void geometry_stage(point MeshData input[1], uint primitive_id : SV_PrimitiveID, uint instance : SV_GSInstanceID, inout LineStream<LinePoint> stream) {
                 UNITY_SETUP_INSTANCE_ID(input[0]);
                 if(primitive_id > 0) { return; }
 
+                LineDrawer drawer = LineDrawer::init(half3(0, 0, 0));
                 const Header header = Header::decode(_Portal_State);
 
                 // Draw portals
                 if((0x1 << instance) & header.portal_mask) {
-                    Portal p = Portal::decode(_Portal_State, instance);
-                    LineDrawer drawer = LineDrawer::init(hue_shift_yiq(half3(1, 0, 0), instance / 8.0 * UNITY_TWO_PI));
+                    const Portal p = Portal::decode(_Portal_State, instance);
+                    drawer.set_color(hue_shift_yiq(half3(1, 0, 0), instance / 8.0 * UNITY_TWO_PI));
                     if(!p.is_ellipse) {
                         drawer.solid_ws(stream, p.position - p.x_axis - p.y_axis);
                         drawer.solid_ws(stream, p.position + p.x_axis - p.y_axis);
@@ -114,7 +116,7 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
                     const float s = 0.1;
                     if(distance(position, _WorldSpaceCameraPos) > s) {
                         const bool in_portal = header.camera_in_portal[instance];
-                        LineDrawer drawer = LineDrawer::init(float3(in_portal, !in_portal, 0));
+                        drawer.set_color(half3(in_portal, !in_portal, 0));
                         stream.RestartStrip();
                         drawer.solid_ws(stream, position + quaternion_rotate(rotation, -float3(s, 0, 0)));
                         drawer.solid_ws(stream, position + quaternion_rotate(rotation,  float3(s, 0, 0)));
@@ -128,6 +130,16 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
                 }
 
                 // Mesh Probes
+                for(uint column = 0; column * 32 + instance < header.mesh_probe_count; column += 1) {
+                    const MeshProbeState state = MeshProbeState::decode(_Portal_State[uint2(3 + column, instance)]);
+                    const MeshProbeConfig config = MeshProbeConfig::decode(_Portal_State[uint2(3 + column, instance + 32)]);
+                    if(config.parent != MeshProbeConfig::no_parent) {
+                        const MeshProbeState parent_state = MeshProbeState::decode(_Portal_State, config.parent);
+                        stream.RestartStrip();
+                        drawer.solid_ws(stream, state.position, half3(state.in_portal, !state.in_portal, 0));
+                        drawer.solid_ws(stream, parent_state.position, half3(parent_state.in_portal, !parent_state.in_portal, 0));
+                    }
+                }
             }
             ENDCG
         }

@@ -1,28 +1,19 @@
 {
   "dependencies": {
-    "dev.hai-vr.animator-as-code.v1.modular-avatar": {
-      "version": "1.1.1"
+    "com.vrchat.avatars": {
+      "version": "3.8.2"
     },
     "dev.hai-vr.animator-as-code.v1.vrchat": {
-      "version": "1.1.1"
+      "version": "1.1.2"
     },
-    "com.vrchat.avatars": {
-      "version": "3.8.1"
+    "dev.hai-vr.animator-as-code.v1.modular-avatar": {
+      "version": "1.1.2"
+    },
+    "dev.hai-vr.animator-as-code.v1": {
+      "version": "1.2.0"
     }
   },
   "locked": {
-    "dev.hai-vr.animator-as-code.v1.modular-avatar": {
-      "version": "1.1.1",
-      "dependencies": {
-        "dev.hai-vr.animator-as-code.v1": ">=1.1.0 <2.0.0-a",
-        "nadena.dev.modular-avatar": ">=1.9.9 <2.0.0-a",
-        "com.vrchat.avatars": ">=3.5.2 <3.8.0-a"
-      }
-    },
-    "dev.hai-vr.animator-as-code.v1": {
-      "version": "1.1.0",
-      "dependencies": {}
-    },
     "nadena.dev.modular-avatar": {
       "version": "1.12.5",
       "dependencies": {
@@ -34,21 +25,33 @@
       "version": "1.7.10",
       "dependencies": {}
     },
-    "dev.hai-vr.animator-as-code.v1.vrchat": {
-      "version": "1.1.1",
-      "dependencies": {
-        "dev.hai-vr.animator-as-code.v1": ">=1.1.0 <2.0.0-a",
-        "com.vrchat.avatars": ">=3.5.2 <3.8.0-a"
-      }
-    },
     "com.vrchat.avatars": {
-      "version": "3.8.1",
+      "version": "3.8.2",
       "dependencies": {
-        "com.vrchat.base": "3.8.1"
+        "com.vrchat.base": "3.8.2"
       }
     },
     "com.vrchat.base": {
-      "version": "3.8.1",
+      "version": "3.8.2",
+      "dependencies": {}
+    },
+    "dev.hai-vr.animator-as-code.v1.vrchat": {
+      "version": "1.1.2",
+      "dependencies": {
+        "dev.hai-vr.animator-as-code.v1": ">=1.1.0 <2.0.0-a",
+        "com.vrchat.avatars": ">=3.5.2 <999.0.0-a"
+      }
+    },
+    "dev.hai-vr.animator-as-code.v1.modular-avatar": {
+      "version": "1.1.2",
+      "dependencies": {
+        "dev.hai-vr.animator-as-code.v1": ">=1.1.0 <2.0.0-a",
+        "nadena.dev.modular-avatar": ">=1.9.9 <2.0.0-a",
+        "com.vrchat.avatars": ">=3.5.2 <999.0.0-a"
+      }
+    },
+    "dev.hai-vr.animator-as-code.v1": {
+      "version": "1.2.0",
       "dependencies": {}
     }
   }

@@ -88,7 +88,7 @@ namespace Lereldarion.Portal
             // Scan portal system components
             var vertices = new List<Vertex>();
             var context = new Context { Animator = animator, System = system, Vertices = vertices };
-            foreach (var portal in scan_root.GetComponentsInChildren<QuadPortal>(true)) { SetupQuadPortal(portal, context); }
+            foreach (var portal in scan_root.GetComponentsInChildren<PortalSurface>(true)) { SetupPortalSurface(portal, context); }
             SetupMeshProbes(scan_root, context);
 
             // Make system skinned mesh
@@ -198,9 +198,9 @@ namespace Lereldarion.Portal
         /// </summary>
         /// <param name="portal">Portal descriptor</param>
         /// <param name="context">Data of the current portal system being built</param>
-        private void SetupQuadPortal(QuadPortal portal, Context context)
+        private void SetupPortalSurface(PortalSurface portal, Context context)
         {
-            VertexType vertex_type = portal.Shape == QuadPortal.ShapeType.Rectangle ? VertexType.QuadPortal : VertexType.EllipsePortal;
+            VertexType vertex_type = portal.Shape == PortalSurface.ShapeType.Rectangle ? VertexType.QuadPortal : VertexType.EllipsePortal;
             int portal_id = context.PortalCount; context.PortalCount += 1;
 
             context.Vertices.Add(new Vertex

@@ -8,7 +8,7 @@ namespace Lereldarion.Portal
     /// Size is given for X and Y.
     /// </summary>
     [DisallowMultipleComponent]
-    public class QuadPortal : MonoBehaviour, IEditorOnly
+    public class PortalSurface : MonoBehaviour, IEditorOnly
     {
         [Tooltip("Portal size on X,Y"), Min(0.00001f)]
         public Vector2 Size = Vector2.one;

@@ -228,18 +228,22 @@ namespace Lereldarion.Portal
             var probe_mapping = new Dictionary<Transform, MeshProbeCandidate>();
             MeshProbeCandidate probe_for_bone(Transform bone)
             {
-                if (probe_mapping.TryGetValue(bone, out MeshProbeCandidate probe))
+                if (probe_mapping.TryGetValue(bone, out MeshProbeCandidate existing_probe))
                 {
-                    return probe;
+                    return existing_probe;
                 }
                 else
                 {
-                    var merged_to_parent = bone.parent.GetComponentInParent<PortalMeshProbeMergeChildren>(true);
-                    if (merged_to_parent != null && merged_to_parent.transform.IsChildOf(context.System.ScanRoot))
+                    var merged = bone.GetComponentInParent<PortalMeshProbeMergeChildren>(true);
+                    if (merged != null)
                     {
-                        var merged_probe = probe_for_bone(merged_to_parent.transform);
-                        probe_mapping.Add(bone, merged_probe);
-                        return merged_probe;
+                        Transform target = merged.Target;
+                        if (target != bone && target.IsChildOf(context.System.ScanRoot))
+                        {
+                            var probe = probe_for_bone(target);
+                            probe_mapping.Add(bone, probe);
+                            return probe;
+                        }
                     }
 
                     // Actually create a probe

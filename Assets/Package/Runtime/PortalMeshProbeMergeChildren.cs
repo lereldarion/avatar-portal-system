@@ -8,6 +8,17 @@ namespace Lereldarion.Portal
     /// </summary>
     public class PortalMeshProbeMergeChildren : MonoBehaviour, IEditorOnly
     {
-        // TODO ?
+        public MergeTarget MergeInto = MergeTarget.Self;
+
+        public Transform Target
+        {
+            get => MergeInto == MergeTarget.Parent ? transform.parent : transform;
+        }
+
+        public enum MergeTarget
+        {
+            Self,
+            Parent,
+        }
     }
 }

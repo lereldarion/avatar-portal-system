@@ -4,10 +4,11 @@ using IEditorOnly = VRC.SDKBase.IEditorOnly;
 namespace Lereldarion.Portal
 {
     /// <summary>
-    /// Add a portal quad on XY axis of this transform.
-    /// Size is given for X and Y.
+    /// Override automatic mesh probe position for bone.
+    /// TODO find the right semantics. Potentially list of localpos + radius, or just auto compute radius
+    /// Could be used to split parenting by overriding parent to null or something
     /// </summary>
-    public class PortalMeshProbe : MonoBehaviour, IEditorOnly
+    public class PortalMeshProbeOverride : MonoBehaviour, IEditorOnly
     {
         [Tooltip("Radius of effect (detection, mesh influence)"), Min(0.00001f)]
         public float Radius = 0.1f;
@@ -19,19 +20,17 @@ namespace Lereldarion.Portal
         }
 
         [Tooltip("Parent override ; if not defined take the first probe found on parent transforms")]
-        public PortalMeshProbe OverrideParent = null;
-        public PortalMeshProbe Parent {
-            get => OverrideParent ?? transform.parent.GetComponentInParent<PortalMeshProbe>(true);
+        public PortalMeshProbeOverride OverrideParent = null;
+        public PortalMeshProbeOverride Parent {
+            get => OverrideParent ?? transform.parent.GetComponentInParent<PortalMeshProbeOverride>(true);
         }
-
-        // TODO mesh list to filter ?
 
         public void OnDrawGizmosSelected()
         {
             Gizmos.color = new Color(0f, 1f, 1f, 0.1f);
             Gizmos.DrawSphere(Position, Radius);
 
-            PortalMeshProbe parent = Parent;
+            PortalMeshProbeOverride parent = Parent;
             if (parent != null)
             {
                 Gizmos.color = Color.cyan;

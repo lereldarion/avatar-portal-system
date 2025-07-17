@@ -11,7 +11,11 @@ namespace Lereldarion.Portal
     public class PortalSystem : MonoBehaviour, IEditorOnly
     {
         [Tooltip("Override root of component scan ; if not defined use the portal system transform")]
-        public Transform ScanRoot = null;
+        public Transform ScanRootOverride = null;
+        public Transform ScanRoot
+        {
+            get => ScanRootOverride ?? transform;
+        }
 
         [Header("System update elements")]
         [Tooltip("Update loop material")]
@@ -23,5 +27,11 @@ namespace Lereldarion.Portal
         public Renderer Visuals;
         [Min(1f), Tooltip("Force occlusion bounds of the system to this size")]
         public float OcclusionBoxSize = 1000f;
+
+        [Header("Mesh probes")]
+        [Tooltip("Root bone for mesh probe tree, usually the head to be synchronised with camera")]
+        public Transform MeshProbeRootBone;
+        [Range(0, 7)]
+        public int MeshProbeUvChannel = 7;
     }
 }

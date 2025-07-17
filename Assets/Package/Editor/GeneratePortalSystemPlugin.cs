@@ -83,13 +83,12 @@ namespace Lereldarion.Portal
         {
             List<Mesh> generated_meshes = new List<Mesh>();
             Transform root = system.transform;
-            Transform scan_root = system.ScanRoot ?? root;
 
             // Scan portal system components
             var vertices = new List<Vertex>();
-            var context = new Context { Animator = animator, System = system, Vertices = vertices };
-            foreach (var portal in scan_root.GetComponentsInChildren<PortalSurface>(true)) { SetupPortalSurface(portal, context); }
-            SetupMeshProbes(scan_root, context);
+            var context = new Context { System = system, Vertices = vertices };
+            foreach (var portal in system.ScanRoot.GetComponentsInChildren<PortalSurface>(true)) { SetupPortalSurface(portal, context); }
+            SetupMeshProbes(context);
 
             // Make system skinned mesh
             {
@@ -115,15 +114,11 @@ namespace Lereldarion.Portal
                 Transform[] bones = vertices.Select(vertex => vertex.transform).Distinct().ToArray();
                 mesh.bindposes = bones.Select(bone => bone.worldToLocalMatrix * root.localToWorldMatrix).ToArray();
 
-                var bone_to_bone_id = new Dictionary<Transform, int>();
-                for (int i = 0; i < bones.Length; i += 1)
-                {
-                    bone_to_bone_id.Add(bones[i], i);
-                }
+                Dictionary<Transform, int> bone_id_mapping = Enumerable.Range(0, bones.Length).ToDictionary(id => bones[id], id => id);
                 mesh.boneWeights = vertices.Select(vertex =>
                 {
                     var bw = new BoneWeight();
-                    bw.boneIndex0 = bone_to_bone_id[vertex.transform];
+                    bw.boneIndex0 = bone_id_mapping[vertex.transform];
                     bw.weight0 = 1;
                     return bw;
                 }).ToArray();
@@ -160,8 +155,8 @@ namespace Lereldarion.Portal
 
             // Init animation
             {
-                var layer = context.Animator.Controller.NewLayer("Portal Init");
-                var clip = context.Animator.Aac.NewClip();
+                var layer = animator.Controller.NewLayer("Portal Init");
+                var clip = animator.Aac.NewClip();
 
                 // Extend bounding box with animator.
                 clip.Scaling(context.System.Visuals.transform, context.System.OcclusionBoxSize * Vector3.one);
@@ -181,7 +176,6 @@ namespace Lereldarion.Portal
 
         private class Context
         {
-            public AnimatorContext Animator;
             public PortalSystem System;
             public List<Vertex> Vertices;
             public int PortalCount = 0;
@@ -214,18 +208,108 @@ namespace Lereldarion.Portal
             Object.DestroyImmediate(portal); // Cleanup components
         }
 
+        private class MeshProbeCandidate
+        {
+            public int index;
+            public Transform bone;
+            /// <summary>List of vertices local positions with respect to bone</summary>
+            public List<Vector3> vertices = new List<Vector3>();
+        };
+
         /// <summary>
         /// Generate a system mesh point for every mesh probe.
         /// This is 2-pass to establish parent links properly.
         /// </summary>
         /// <param name="scan_root">Transform to start scanning from</param>
         /// <param name="context">Data of the current portal system being built</param>
-        private void SetupMeshProbes(Transform scan_root, Context context)
+        private void SetupMeshProbes(Context context)
         {
-            var probe_vertex_ids = new Dictionary<PortalMeshProbe, int>();
+            var probe_list = new List<MeshProbeCandidate>();
+            var probe_mapping = new Dictionary<Transform, MeshProbeCandidate>();
+            MeshProbeCandidate probe_for_bone(Transform bone)
+            {
+                if (probe_mapping.TryGetValue(bone, out MeshProbeCandidate probe))
+                {
+                    return probe;
+                }
+                else
+                {
+                    var merged_to_parent = bone.parent.GetComponentInParent<PortalMeshProbeMergeChildren>(true);
+                    if (merged_to_parent != null && merged_to_parent.transform.IsChildOf(context.System.ScanRoot))
+                    {
+                        var merged_probe = probe_for_bone(merged_to_parent.transform);
+                        probe_mapping.Add(bone, merged_probe);
+                        return merged_probe;
+                    }
 
+                    // Actually create a probe
+                    var new_probe = new MeshProbeCandidate { index = probe_list.Count, bone = bone };
+                    probe_list.Add(new_probe);
+                    probe_mapping.Add(bone, new_probe);
+                    return new_probe;
+                }
+            }
+
+            // Scan all renderer vertices, generate probes and UV tags
+            foreach (Renderer renderer in context.System.ScanRoot.GetComponentsInChildren<Renderer>(true))
+            {
+                // Only touch non system renderers.
+                // TODO add blacklist ?
+                if (renderer == context.System.Visuals) { continue; }
+
+                SkinnedMeshRenderer skinned_mesh_renderer = renderer as SkinnedMeshRenderer;
+                MeshRenderer mesh_renderer = renderer as MeshRenderer;
+                if (skinned_mesh_renderer != null)
+                {
+                    Mesh mesh = skinned_mesh_renderer.sharedMesh;
+                    Vector3[] vertices = mesh.vertices;
+
+                    Vector2[] uv_probe_tag = new Vector2[mesh.vertexCount];
+
+                    // Pre-compute probe relations to bones
+                    Transform[] bones = skinned_mesh_renderer.bones;
+                    Matrix4x4[] bindposes = mesh.bindposes;
+                    Dictionary<Transform, int> bone_id_mapping = Enumerable.Range(0, bones.Length).ToDictionary(id => bones[id], id => id);
+                    int associate_to_probe(int bone_id, Vector3 vertex)
+                    {
+                        // Defer creating probe to here, to only create probe for bones that are used.
+                        MeshProbeCandidate probe = probe_for_bone(bones[bone_id]);
+                        probe.vertices.Add(bindposes[bone_id_mapping[probe.bone]].MultiplyPoint3x4(vertex));
+                        return probe.index;
+                    }
+
+                    // https://docs.unity3d.com/ScriptReference/Mesh.GetAllBoneWeights.html iteration scheme
+                    var bone_per_vertex = mesh.GetBonesPerVertex();
+                    var bone_weights = mesh.GetAllBoneWeights();
+                    int bw_array_offset = 0;
+                    for (int vertex_id = 0; vertex_id < mesh.vertexCount; vertex_id += 1)
+                    {
+                        int influence_count = bone_per_vertex[vertex_id];
+                        Vector3 vertex = vertices[vertex_id];
+
+                        // Vertex weights in decreasing order of influence ; use first 2.
+                        uv_probe_tag[vertex_id] = new Vector2(
+                            influence_count >= 1 ? associate_to_probe(bone_weights[bw_array_offset].boneIndex, vertex) : -1,
+                            influence_count >= 2 ? associate_to_probe(bone_weights[bw_array_offset + 1].boneIndex, vertex) : -1
+                        );
+                        bw_array_offset += influence_count;
+                    }
+
+                    // Edit mesh in place. No save to assets & swap so it will not be persistent, but sufficient for upload.
+                    mesh.SetUVs(context.System.MeshProbeUvChannel, uv_probe_tag);
+                }
+                else if (mesh_renderer != null)
+                {
+                    // TODO
+                }
+            }
+
+            Debug.Log(probe_list.Count);
+            Debug.Log($"Probe transforms: {string.Join(", ", probe_list.Select(probe => probe.bone.name).ToArray())}");
+
+            /*
             // Initial scan, create vertices without defined parents.
-            foreach (PortalMeshProbe probe in scan_root.GetComponentsInChildren<PortalMeshProbe>(true))
+            foreach (PortalMeshProbeOverride probe in context.System.ScanRoot.GetComponentsInChildren<PortalMeshProbeOverride>(true))
             {
                 int probe_id = context.MeshProbeCount; context.MeshProbeCount += 1;
 
@@ -244,7 +328,7 @@ namespace Lereldarion.Portal
             // Finalize parent links
             foreach (var (probe, vertex_id) in probe_vertex_ids)
             {
-                PortalMeshProbe parent = probe.Parent;
+                PortalMeshProbeOverride parent = probe.Parent;
                 if (parent != null)
                 {
                     int parent_probe_vertex_id = probe_vertex_ids[parent];
@@ -258,6 +342,7 @@ namespace Lereldarion.Portal
             {
                 Object.DestroyImmediate(probe);
             }
+            */
         }
     }
 }

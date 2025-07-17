@@ -304,7 +304,19 @@ namespace Lereldarion.Portal
                 }
                 else if (mesh_renderer != null)
                 {
-                    // TODO
+                    Mesh mesh = mesh_renderer.GetComponent<MeshFilter>().sharedMesh;
+                    Vector3[] vertices = mesh.vertices;
+
+                    MeshProbeCandidate probe = probe_for_bone(mesh_renderer.transform);
+                    Vector2[] uv_probe_tag = new Vector2[mesh.vertexCount];
+
+                    for (int vertex_id = 0; vertex_id < mesh.vertexCount; vertex_id += 1)
+                    {
+                        probe.vertices.Add(vertices[vertex_id]);
+                        uv_probe_tag[vertex_id] = new Vector2(probe.index, -1);
+                    }
+
+                    mesh.SetUVs(context.System.MeshProbeUvChannel, uv_probe_tag);
                 }
             }
 

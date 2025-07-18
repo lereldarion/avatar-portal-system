@@ -384,4 +384,27 @@ float portal_fragment_test(float3 fragment_world_pos, float2 portal_uv, Texture2
     return 1;
 }
 
+void portal_shadowcaster_test(float3 fragment_world_pos, float2 portal_uv, Texture2D<uint4> state) {
+    // Shadowcaster : kill if mesh part in portal space
+    Header header = Header::decode(state);
+    if(header.is_enabled) {
+        const uint mesh_probe_id = portal_uv.x;
+        const MeshProbeState mesh_probe = MeshProbeState::decode(state, mesh_probe_id);
+        bool fragment_in_portal = mesh_probe.in_portal;
+        
+        uint portal_mask = mesh_probe.traversing_portal_mask;
+        [loop] while(portal_mask) {
+            const uint index = pop_active_portal(portal_mask);
+            const Portal portal = Portal::decode(state, index);
+            if(sign(dot(fragment_world_pos - portal.position, portal.normal)) != sign(dot(mesh_probe.position - portal.position, portal.normal))) {
+                fragment_in_portal = !fragment_in_portal;
+            }
+        }
+
+        if(fragment_in_portal) { discard; }
+    }
+
+    // TODO add discard test IsLocal Head to replace HeadChop.
+}
+
 #endif

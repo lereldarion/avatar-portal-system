@@ -245,7 +245,7 @@ Shader "Lereldarion/Portal/Seal Interface" {
                 // If pixel was from a portal-aware shader, maybe do depth sealing.
                 const float4 grab_pass_pixel = _Lereldarion_Portal_Seal_GrabPass[_Lereldarion_Portal_Seal_GrabPass_TexelSize.zw * input.grab_pos.xy / input.grab_pos.w];
                 if(grab_pass_pixel.a <= -1) {
-                    uint n = -(1 + grab_pass_pixel.a);
+                    const uint n = -(1 + grab_pass_pixel.a);
                     if (n == 0) {
                         // World space
                         discard;
@@ -256,7 +256,7 @@ Shader "Lereldarion/Portal/Seal Interface" {
                             output_depth = UNITY_NEAR_CLIP_VALUE;
                         } else {
                             // Portal space with portal surface depth
-                            uint portal_id = n - 2;
+                            const uint portal_id = n - 2;
                             const Portal p = Portal::decode(_Portal_State, portal_id);
                             float ray_distance = 0;
                             p.ray_intersect(_WorldSpaceCameraPos, ray_ws, ray_distance); // Should be success

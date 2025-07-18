@@ -242,21 +242,27 @@ Shader "Lereldarion/Portal/Seal Interface" {
 
                 const float3 ray_ws = mul((float3x3) unity_MatrixInvV, input.position_vs);
 
-                // If pixel was from a portal-aware shader, seal depth at portal or leave it alone.
+                // If pixel was from a portal-aware shader, maybe do depth sealing.
                 const float4 grab_pass_pixel = _Lereldarion_Portal_Seal_GrabPass[_Lereldarion_Portal_Seal_GrabPass_TexelSize.zw * input.grab_pos.xy / input.grab_pos.w];
                 if(grab_pass_pixel.a <= -1) {
                     uint n = -(1 + grab_pass_pixel.a);
                     if (n == 0) {
-                        // World space portal-aware pixel
+                        // World space
                         discard;
                     } else {
-                        // Portal space portal-aware pixel
-                        uint portal_id = n - 1;
-                        const Portal p = Portal::decode(_Portal_State, portal_id);
-                        float ray_distance = 0;
-                        p.ray_intersect(_WorldSpaceCameraPos, ray_ws, ray_distance); // Should be success
-                        const float4 intersect_cs = UnityWorldToClipPos(_WorldSpaceCameraPos + ray_ws * ray_distance);
-                        output_depth = intersect_cs.z / intersect_cs.w;
+                        // Portal space : seal depth
+                        if (n == 1) {
+                            // Portal space without intersection : seal to near plane
+                            output_depth = UNITY_NEAR_CLIP_VALUE;
+                        } else {
+                            // Portal space with portal surface depth
+                            uint portal_id = n - 2;
+                            const Portal p = Portal::decode(_Portal_State, portal_id);
+                            float ray_distance = 0;
+                            p.ray_intersect(_WorldSpaceCameraPos, ray_ws, ray_distance); // Should be success
+                            const float4 intersect_cs = UnityWorldToClipPos(_WorldSpaceCameraPos + ray_ws * ray_distance);
+                            output_depth = intersect_cs.z / intersect_cs.w;
+                        }
                         return half4(grab_pass_pixel.rgb, 1);
                     }
                 }

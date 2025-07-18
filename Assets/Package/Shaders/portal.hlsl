@@ -373,9 +373,11 @@ float portal_fragment_test(float3 fragment_world_pos, float2 portal_uv, Texture2
         if(same_space == bool(intersect_count & 0x1)) { discard; }
 
         // Store pixel state in alpha channel negative value:
-        // -1 for world space object : tells sealing shader to leave it alone.
-        // -(2 + portal id) for portal space object
-        return fragment_in_portal ? -(2 + float(closest_portal_id)) : -1;
+        // -1 for world space : tells sealing shader to leave it alone.
+        // -2 for portal space without intersection
+        // -(3 + portal id) for portal space with intersection portal id
+        const float portal_space_alpha = intersect_count > 0 ? -(3 + float(closest_portal_id)) : -2;
+        return fragment_in_portal ? portal_space_alpha : -1;
     }
 
     // TODO add discard test IsLocal Head to replace HeadChop.

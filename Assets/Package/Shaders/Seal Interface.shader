@@ -242,16 +242,23 @@ Shader "Lereldarion/Portal/Seal Interface" {
 
                 const float3 ray_ws = mul((float3x3) unity_MatrixInvV, input.position_vs);
 
-                // If pixel was a portal object, keep color and seal at the portal id stored in alpha
+                // If pixel was from a portal-aware shader, seal depth at portal or leave it alone.
                 const float4 grab_pass_pixel = _Lereldarion_Portal_Seal_GrabPass[_Lereldarion_Portal_Seal_GrabPass_TexelSize.zw * input.grab_pos.xy / input.grab_pos.w];
-                uint portal_id;
-                if(pixel_get_depth_portal_id(grab_pass_pixel, portal_id) && bool(input.portal_mask & (0x1 << portal_id))) {
-                    const Portal p = Portal::decode(_Portal_State, portal_id);
-                    float ray_distance = 0;
-                    p.ray_intersect(_WorldSpaceCameraPos, ray_ws, ray_distance); // Should be success
-                    const float4 intersect_cs = UnityWorldToClipPos(_WorldSpaceCameraPos + ray_ws * ray_distance);
-                    output_depth = intersect_cs.z / intersect_cs.w;
-                    return half4(grab_pass_pixel.rgb, 1);
+                if(grab_pass_pixel.a <= -1) {
+                    uint n = -(1 + grab_pass_pixel.a);
+                    if (n == 0) {
+                        // World space portal-aware pixel
+                        discard;
+                    } else {
+                        // Portal space portal-aware pixel
+                        uint portal_id = n - 1;
+                        const Portal p = Portal::decode(_Portal_State, portal_id);
+                        float ray_distance = 0;
+                        p.ray_intersect(_WorldSpaceCameraPos, ray_ws, ray_distance); // Should be success
+                        const float4 intersect_cs = UnityWorldToClipPos(_WorldSpaceCameraPos + ray_ws * ray_distance);
+                        output_depth = intersect_cs.z / intersect_cs.w;
+                        return half4(grab_pass_pixel.rgb, 1);
+                    }
                 }
 
                 // Scan portal for intersections

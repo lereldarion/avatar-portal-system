@@ -329,15 +329,57 @@ bool Header::camera_portal_state(float vrc_camera_mode) {
     #endif
 }
 
-// Render function
+// Render function. Returns alpha value used to drive sealing shader.
+float portal_fragment_test(float3 fragment_world_pos, float2 portal_uv, Texture2D<uint4> state, float vrc_camera_mode) {
+    Header header = Header::decode(state);
+    if(header.is_enabled) {
+        const bool camera_in_portal = header.camera_portal_state(vrc_camera_mode);
 
-bool pixel_get_depth_portal_id(float4 pixel, out uint portal_id) {
-    if(pixel.a <= -1) {
-        portal_id = -(1 + pixel.a);
-        return true;
-    } else {
-        return false;
+        const uint mesh_probe_id = portal_uv.x;
+        const MeshProbeState mesh_probe = MeshProbeState::decode(state, mesh_probe_id);
+        bool fragment_in_portal = mesh_probe.in_portal;
+
+        uint intersect_count = 0;
+        float max_intersection_ray_01 = -1;
+        uint closest_portal_id = 0;
+        
+        [loop] while(header.portal_mask) {
+            const uint index = pop_active_portal(header.portal_mask);
+            const bool traversing_portal = mesh_probe.traversing_portal_mask & (0x1 << index);
+
+            const PortalPixel0 p0 = PortalPixel0::decode(state, index);
+            if(!(traversing_portal || p0.fast_intersect(_WorldSpaceCameraPos, fragment_world_pos))) { continue; }
+            const Portal portal = Portal::decode(p0, state, index);
+            
+            float intersection_ray_01;
+            if(portal.segment_intersect(_WorldSpaceCameraPos, fragment_world_pos, intersection_ray_01)) {
+                intersect_count += 1;
+
+                if(intersection_ray_01 > max_intersection_ray_01) {
+                    closest_portal_id = index;
+                    max_intersection_ray_01 = intersection_ray_01;
+                }
+            }
+
+            if(traversing_portal) {
+                if(sign(dot(fragment_world_pos - portal.position, portal.normal)) != sign(dot(mesh_probe.position - portal.position, portal.normal))) {
+                    fragment_in_portal = !fragment_in_portal;
+                }
+            }
+        }
+
+        // If same space, discard if 1 mod 2 portals. If different space, discard if 0 mod 2 portals.
+        const bool same_space = camera_in_portal == fragment_in_portal;
+        if(same_space == bool(intersect_count & 0x1)) { discard; }
+
+        // Store pixel state in alpha channel negative value:
+        // -1 for world space object : tells sealing shader to leave it alone.
+        // -(2 + portal id) for portal space object
+        return fragment_in_portal ? -(2 + float(closest_portal_id)) : -1;
     }
+
+    // TODO add discard test IsLocal Head to replace HeadChop.
+    return 1;
 }
 
 #endif

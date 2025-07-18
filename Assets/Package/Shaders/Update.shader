@@ -360,8 +360,8 @@ Shader "Lereldarion/Portal/Update" {
                     if(has_parent) {
                         // Fix incoherent states : link to parent can only have different state if explained by portal intersection.
                         // This is done on old state because this is the only time where we have all probes (current and parent) of the same frame.
-                        bool state_are_different = state.in_portal != parent_state.in_portal;
-                        if(state_are_different != bool(link_intersection_count & 0x1)) {
+                        const bool same_space = state.in_portal == parent_state.in_portal;
+                        if(same_space == bool(link_intersection_count & 0x1)) {
                             // Incoherence, reset to parent
                             state.in_portal = parent_state.in_portal;
                         }

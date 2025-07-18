@@ -114,7 +114,7 @@ namespace Lereldarion.Portal
                 Transform[] bones = vertices.Select(vertex => vertex.transform).Distinct().ToArray();
                 mesh.bindposes = bones.Select(bone => bone.worldToLocalMatrix * root.localToWorldMatrix).ToArray();
 
-                Dictionary<Transform, int> bone_id_mapping = Enumerable.Range(0, bones.Length).ToDictionary(id => bones[id], id => id);
+                Dictionary<Transform, int> bone_id_mapping = Enumerable.Range(0, bones.Length).ToDictionary(i => bones[i], i => i);
                 mesh.boneWeights = vertices.Select(vertex =>
                 {
                     var bw = new BoneWeight();
@@ -208,12 +208,14 @@ namespace Lereldarion.Portal
             Object.DestroyImmediate(portal); // Cleanup components
         }
 
-        private class MeshProbeCandidate
+        private class MeshProbe
         {
             public int index;
-            public Transform bone;
+            public Transform transform;
             /// <summary>List of vertices local positions with respect to bone</summary>
             public List<Vector3> vertices = new List<Vector3>();
+            /// <summary>Filled in a second phase</summary>
+            public MeshProbe parent = null;
         };
 
         /// <summary>
@@ -224,32 +226,33 @@ namespace Lereldarion.Portal
         /// <param name="context">Data of the current portal system being built</param>
         private void SetupMeshProbes(Context context)
         {
-            var probe_list = new List<MeshProbeCandidate>();
-            var probe_mapping = new Dictionary<Transform, MeshProbeCandidate>();
-            MeshProbeCandidate probe_for_bone(Transform bone)
+            var probe_list = new List<MeshProbe>(); // List of unique probes
+            var probe_mapping = new Dictionary<Transform, MeshProbe>(); // Duplicates with bone merges
+
+            MeshProbe probe_for_transform(Transform transform)
             {
-                if (probe_mapping.TryGetValue(bone, out MeshProbeCandidate existing_probe))
+                if (probe_mapping.TryGetValue(transform, out MeshProbe existing_probe))
                 {
                     return existing_probe;
                 }
                 else
                 {
-                    var merged = bone.GetComponentInParent<PortalMeshProbeMergeChildren>(true);
+                    var merged = transform.GetComponentInParent<PortalMeshProbeMergeChildren>(true);
                     if (merged != null)
                     {
                         Transform target = merged.Target;
-                        if (target != bone && target.IsChildOf(context.System.ScanRoot))
+                        if (target != transform && target.IsChildOf(context.System.ScanRoot))
                         {
-                            var probe = probe_for_bone(target);
-                            probe_mapping.Add(bone, probe);
+                            var probe = probe_for_transform(target);
+                            probe_mapping.Add(transform, probe);
                             return probe;
                         }
                     }
 
                     // Actually create a probe
-                    var new_probe = new MeshProbeCandidate { index = probe_list.Count, bone = bone };
+                    var new_probe = new MeshProbe { index = probe_list.Count, transform = transform };
                     probe_list.Add(new_probe);
-                    probe_mapping.Add(bone, new_probe);
+                    probe_mapping.Add(transform, new_probe);
                     return new_probe;
                 }
             }
@@ -273,12 +276,12 @@ namespace Lereldarion.Portal
                     // Pre-compute probe relations to bones
                     Transform[] bones = skinned_mesh_renderer.bones;
                     Matrix4x4[] bindposes = mesh.bindposes;
-                    Dictionary<Transform, int> bone_id_mapping = Enumerable.Range(0, bones.Length).ToDictionary(id => bones[id], id => id);
+                    Dictionary<Transform, int> bone_id_mapping = Enumerable.Range(0, bones.Length).ToDictionary(i => bones[i], i => i);
                     int associate_to_probe(int bone_id, Vector3 vertex)
                     {
                         // Defer creating probe to here, to only create probe for bones that are used.
-                        MeshProbeCandidate probe = probe_for_bone(bones[bone_id]);
-                        probe.vertices.Add(bindposes[bone_id_mapping[probe.bone]].MultiplyPoint3x4(vertex));
+                        MeshProbe probe = probe_for_transform(bones[bone_id]);
+                        probe.vertices.Add(bindposes[bone_id_mapping[probe.transform]].MultiplyPoint3x4(vertex));
                         return probe.index;
                     }
 
@@ -307,7 +310,7 @@ namespace Lereldarion.Portal
                     Mesh mesh = mesh_renderer.GetComponent<MeshFilter>().sharedMesh;
                     Vector3[] vertices = mesh.vertices;
 
-                    MeshProbeCandidate probe = probe_for_bone(mesh_renderer.transform);
+                    MeshProbe probe = probe_for_transform(mesh_renderer.transform);
                     Vector2[] uv_probe_tag = new Vector2[mesh.vertexCount];
 
                     for (int vertex_id = 0; vertex_id < mesh.vertexCount; vertex_id += 1)
@@ -320,45 +323,65 @@ namespace Lereldarion.Portal
                 }
             }
 
-            Debug.Log(probe_list.Count);
-            Debug.Log($"Probe transforms: {string.Join(", ", probe_list.Select(probe => probe.bone.name).ToArray())}");
-
-            /*
-            // Initial scan, create vertices without defined parents.
-            foreach (PortalMeshProbeOverride probe in context.System.ScanRoot.GetComponentsInChildren<PortalMeshProbeOverride>(true))
+            // Now that all probes are created, set parent links
+            Dictionary<Transform, MeshProbe> bone_to_probe = probe_list.ToDictionary(probe => probe.transform, probe => probe);
+            foreach (MeshProbe probe in probe_list)
             {
-                int probe_id = context.MeshProbeCount; context.MeshProbeCount += 1;
-
-                probe_vertex_ids.Add(probe, context.Vertices.Count);
-                context.Vertices.Add(new Vertex
+                Transform t = probe.transform.parent;
+                while (t != null)
                 {
-                    transform = probe.transform,
-                    localPosition = probe.LocalPosition,
-                    // Retrieve scaled radius from normal length
-                    normal = new Vector3(probe.Radius, 0, 0),
-                    // Start with "null" (-1) parent id. Will be filled later when all probes have been seen.
-                    uv0 = new Vector3((float)VertexType.MeshProbe, (float)probe_id, -1f),
-                });
-            }
-            
-            // Finalize parent links
-            foreach (var (probe, vertex_id) in probe_vertex_ids)
-            {
-                PortalMeshProbeOverride parent = probe.Parent;
-                if (parent != null)
-                {
-                    int parent_probe_vertex_id = probe_vertex_ids[parent];
-                    float parent_probe_id = context.Vertices[parent_probe_vertex_id].uv0.y;
-                    context.Vertices[vertex_id].uv0.z = parent_probe_id;
+                    if (bone_to_probe.TryGetValue(t, out MeshProbe parent_probe))
+                    {
+                        probe.parent = parent_probe;
+                        break;
+                    }
+                    t = t.parent;
                 }
             }
 
-            // Cleanup components
-            foreach (var probe in probe_vertex_ids.Keys)
+            // Invert links towards parent override
+            if (bone_to_probe.TryGetValue(context.System.MeshProbeRootBone, out MeshProbe root_probe))
             {
-                Object.DestroyImmediate(probe);
+                MeshProbe next = root_probe.parent;
+                root_probe.parent = null;
+                MeshProbe done = root_probe;
+                while (next != null)
+                {
+                    MeshProbe current = next;
+                    next = current.parent;
+                    current.parent = done;
+                    done = current;
+                }
             }
-            */
+
+            // Generate probes
+            foreach (MeshProbe probe in probe_list)
+            {
+                Vector3 a = Vector3.zero;
+                foreach (Vector3 pos in probe.vertices) { a += pos; }
+                Vector3 barycenter = a / Mathf.Max(1f, probe.vertices.Count);
+
+                float radius_sq = probe.vertices.Select(vertex => { Vector3 v = vertex - barycenter; return Vector3.Dot(v, v); }).Max();
+                float radius = Mathf.Sqrt(radius_sq); // TODO margin ?
+
+                float parent_index = probe.parent != null ? probe.parent.index : -1;
+
+                context.Vertices.Add(new Vertex
+                {
+                    transform = probe.transform,
+                    localPosition = barycenter,
+                    // Retrieve scaled radius from normal length
+                    normal = new Vector3(radius, 0, 0),
+                    uv0 = new Vector3((float)VertexType.MeshProbe, probe.index, parent_index),
+                });
+            }
+            context.MeshProbeCount = probe_list.Count;
+
+            // Cleanup components. Need to search them first.
+            foreach (var merger in context.System.ScanRoot.GetComponentsInChildren<PortalMeshProbeMergeChildren>(true))
+            {
+                Object.DestroyImmediate(merger);
+            }
         }
     }
 }

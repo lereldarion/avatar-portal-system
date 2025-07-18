@@ -32,7 +32,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Ints:
-    - _Mesh_Probe_Count: 0
+    - _Mesh_Probe_Count: 78
     - _Portal_Camera_Force_World: 0
     - _Portal_Count: 4
     - _Portal_System_Enabled: 1

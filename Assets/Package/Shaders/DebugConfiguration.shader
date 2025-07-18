@@ -2,6 +2,7 @@
 Shader "Lereldarion/Portal/DebugConfiguration" {
     Properties {
         [NoScaleOffset] _Portal_State("State texture", 2D) = ""
+        [ToggleUI] _Portal_Debug_Show_Camera("Show cameras", Integer) = 0
     }
     SubShader {
         Tags {
@@ -30,6 +31,7 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
             uniform Texture2D<half4> _Lereldarion_Portal_Seal_GrabPass;
             uniform float4 _VRChatScreenCameraRot;
             uniform float4 _VRChatPhotoCameraRot;
+            uniform uint _Portal_Debug_Show_Camera;
 
             struct MeshData {
                 UNITY_VERTEX_INPUT_INSTANCE_ID
@@ -108,7 +110,7 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
                 }
                 
                 // Cameras
-                if(instance < 2) {
+                if(_Portal_Debug_Show_Camera && instance < 2) {
                     const float3 position = CameraPosition::decode(_Portal_State, instance);
                     const float4 rotation = instance == 0 ? _VRChatScreenCameraRot : _VRChatPhotoCameraRot;
                     

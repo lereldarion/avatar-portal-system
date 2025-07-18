@@ -29,6 +29,5 @@ Avatar renderers should then combine mesh probe state (from UV id) and camera st
 
 ### TODO
 - replace head chop by shader discard ; use uv.y as filter. Or use distance to camera discard (sphere)
-- portal aware code insert
 - nice visuals. Background from DepthTexture ? Borders with VHS effect ?
 - make nice package with instructions from template : https://github.com/vrchat-community/template-package

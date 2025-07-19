@@ -147,7 +147,6 @@ Shader "Lereldarion/Portal/Seal Interface" {
 
             // portal ids of pixels of objects in portal space
             uniform Texture2D<float4> _Lereldarion_Portal_Seal_GrabPass;
-            uniform float4 _Lereldarion_Portal_Seal_GrabPass_TexelSize;
 
             struct MeshData {
                 UNITY_VERTEX_INPUT_INSTANCE_ID
@@ -237,14 +236,24 @@ Shader "Lereldarion/Portal/Seal Interface" {
                 }
             }
 
+            float clamped_depth_from_world_position(float3 position) {
+                float3 vs = UnityWorldToViewPos(position);
+                vs.z = min(vs.z, -_ProjectionParams.y); // Ensure we are at near plane at minimum ; Z axis is ]-inf,0]
+                const float4 cs = UnityViewToClipPos(vs);
+                return cs.z / cs.w;
+            }
+
             half4 fragment_stage (FragmentData input, out float output_depth : SV_Depth) : SV_Target {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
 
                 const float3 ray_ws = mul((float3x3) unity_MatrixInvV, input.position_vs);
 
-                // If pixel was from a portal-aware shader, maybe do depth sealing.
-                const float4 grab_pass_pixel = _Lereldarion_Portal_Seal_GrabPass[_Lereldarion_Portal_Seal_GrabPass_TexelSize.zw * input.grab_pos.xy / input.grab_pos.w];
+                float2 grab_pass_size;
+                _Lereldarion_Portal_Seal_GrabPass.GetDimensions(grab_pass_size.x, grab_pass_size.y);
+                const float4 grab_pass_pixel = _Lereldarion_Portal_Seal_GrabPass[grab_pass_size * input.grab_pos.xy / input.grab_pos.w];
+                
                 if(grab_pass_pixel.a <= -1) {
+                    // If pixel was from a portal-aware shader
                     const uint n = -(1 + grab_pass_pixel.a);
                     if (n == 0) {
                         // World space
@@ -260,8 +269,7 @@ Shader "Lereldarion/Portal/Seal Interface" {
                             const Portal p = Portal::decode(_Portal_State, portal_id);
                             float ray_distance = 0;
                             p.ray_intersect(_WorldSpaceCameraPos, ray_ws, ray_distance); // Should be success
-                            const float4 intersect_cs = UnityWorldToClipPos(_WorldSpaceCameraPos + ray_ws * ray_distance);
-                            output_depth = intersect_cs.z / intersect_cs.w;
+                            output_depth = clamped_depth_from_world_position(_WorldSpaceCameraPos + ray_ws * ray_distance);
                         }
                         return half4(grab_pass_pixel.rgb, 1);
                     }
@@ -291,10 +299,7 @@ Shader "Lereldarion/Portal/Seal Interface" {
                 
                 // Depth logic : use the depth of the last portal intersection, which must go from world to portal.
                 // Otherwise it would have been discarded.
-                float3 last_intersection_vs = UnityWorldToViewPos(_WorldSpaceCameraPos + ray_ws * max_intersection_ray_distance);
-                last_intersection_vs.z = min(last_intersection_vs.z, -_ProjectionParams.y); // Ensure we are at near plane at minimum ; Z axis is ]-inf,0]
-                const float4 last_intersection_cs = UnityViewToClipPos(last_intersection_vs);
-                output_depth = last_intersection_cs.z / last_intersection_cs.w;
+                output_depth = clamped_depth_from_world_position(_WorldSpaceCameraPos + ray_ws * max_intersection_ray_distance);
 
                 // TODO portal visuals
                 return half4(0, 0, 0, 1);

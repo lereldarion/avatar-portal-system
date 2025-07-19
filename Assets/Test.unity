@@ -246,7 +246,7 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Materials.Array.data[0]
       value: 
-      objectReference: {fileID: 2100000, guid: 2b8fcafc9b410ac4aac6318b054103d8, type: 2}
+      objectReference: {fileID: 2100000, guid: 857556d0aefa7904db7dd66bd27bb0ca, type: 2}
     - target: {fileID: 1630794972795428178, guid: f81e8172c337a714894d6fdbd0900d8d,
         type: 3}
       propertyPath: m_Materials.Array.data[1]
@@ -1041,7 +1041,7 @@ MonoBehaviour:
   targetBones:
   - transform: {fileID: 850611540}
     scaleFactor: 1
-    applyCondition: 2
+    applyCondition: 0
   globalScaleFactor: 1
 --- !u!1 &662350341
 GameObject:

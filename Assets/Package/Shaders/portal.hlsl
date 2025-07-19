@@ -331,6 +331,7 @@ bool Header::camera_portal_state(float vrc_camera_mode) {
 
 // Render function. Returns alpha value used to drive sealing shader.
 float portal_fragment_test(float3 fragment_world_pos, float2 portal_uv, Texture2D<uint4> state, float vrc_camera_mode) {
+    float alpha = 1;
     Header header = Header::decode(state);
     if(header.is_enabled) {
         const bool camera_in_portal = header.camera_portal_state(vrc_camera_mode);
@@ -377,11 +378,12 @@ float portal_fragment_test(float3 fragment_world_pos, float2 portal_uv, Texture2
         // -2 for portal space without intersection
         // -(3 + portal id) for portal space with intersection portal id
         const float portal_space_alpha = intersect_count > 0 ? -(3 + float(closest_portal_id)) : -2;
-        return fragment_in_portal ? portal_space_alpha : -1;
+        alpha = fragment_in_portal ? portal_space_alpha : -1;
     }
 
     // TODO add discard test IsLocal Head to replace HeadChop.
-    return 1;
+    
+    return alpha;
 }
 
 void portal_shadowcaster_test(float3 fragment_world_pos, float2 portal_uv, Texture2D<uint4> state) {

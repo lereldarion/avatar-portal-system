@@ -33,7 +33,7 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints:
     - _IsLocal: 0
-    - _Mesh_Probe_Count: 74
+    - _Mesh_Probe_Count: 96
     - _Portal_Camera_Force_World: 0
     - _Portal_Count: 4
     - _Portal_System_Enabled: 1

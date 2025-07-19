@@ -305,10 +305,6 @@ PrefabInstance:
         type: 3}
       insertIndex: -1
       addedObject: {fileID: 939137259}
-    - targetCorrespondingSourceObject: {fileID: -5342573206452999017, guid: f81e8172c337a714894d6fdbd0900d8d,
-        type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 2143549291}
   m_SourcePrefab: {fileID: 100100000, guid: f81e8172c337a714894d6fdbd0900d8d, type: 3}
 --- !u!1 &187105562 stripped
 GameObject:
@@ -1188,12 +1184,6 @@ MonoBehaviour:
   AffectsRotationX: 1
   AffectsRotationY: 1
   AffectsRotationZ: 1
---- !u!1 &662809335 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: -5342573206452999017, guid: f81e8172c337a714894d6fdbd0900d8d,
-    type: 3}
-  m_PrefabInstance: {fileID: 187105561}
-  m_PrefabAsset: {fileID: 0}
 --- !u!4 &835984613 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 734122489633926935, guid: f81e8172c337a714894d6fdbd0900d8d,
@@ -2268,6 +2258,7 @@ MonoBehaviour:
   OcclusionBoxSize: 1000
   HeadBone: {fileID: 850611540}
   MeshProbeUvChannel: 7
+  ProbeRadiusMargin: 1
 --- !u!1 &2012814117
 GameObject:
   m_ObjectHideFlags: 0
@@ -2372,19 +2363,6 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 187105561}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &2143549291
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 662809335}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 85f1dfb1786b8ca4ba10cf48422b22ca, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  MergeInto: 0
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

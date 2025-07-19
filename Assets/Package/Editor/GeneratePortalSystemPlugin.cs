@@ -293,7 +293,7 @@ namespace Lereldarion.Portal
                     Matrix4x4[] bindposes = mesh.bindposes;
                     Dictionary<Transform, int> bone_id_mapping = Enumerable.Range(0, bones.Length).ToDictionary(i => bones[i], i => i);
                     bool[] use_head_chop = bones.Select(bone => bone.IsChildOf(context.System.HeadBone)).ToArray();
-                    int associate_to_probe(int bone_id, Vector3 vertex)
+                    int register_to_probe(int bone_id, Vector3 vertex)
                     {
                         // Defer creating probe to here, to only create probe for bones that are used.
                         MeshProbe probe = probe_for_transform(bones[bone_id]);
@@ -310,14 +310,23 @@ namespace Lereldarion.Portal
                         int influence_count = bone_per_vertex[vertex_id];
                         Vector3 vertex = vertices[vertex_id];
 
-                        // Vertex weights in decreasing order of influence ; use first 1 only.
-                        if (influence_count > 0) {
+                        if (influence_count > 0)
+                        {
+                            // Vertex weights in decreasing order of influence. Vertice will be attached to probe for the main influence.
                             int bone_id = bone_weights[bw_array_offset].boneIndex;
                             uv[vertex_id] = new Vector2(
-                                associate_to_probe(bone_id, vertex),
+                                register_to_probe(bone_id, vertex),
                                 use_head_chop[bone_id] ? 1f : 0f
                             );
-                        } else {
+                            // But register other influences to probes so that final radius is more accurate
+                            for (int i = 1; i < influence_count; i += 1)
+                            {
+                                register_to_probe(bone_weights[bw_array_offset + i].boneIndex, vertex);
+                            }
+                        }
+                        else
+                        {
+                            // Unbound vertices. Should be attached to renderer. Decide what to do with them FIXME.
                             uv[vertex_id] = new Vector2(-1f, 0f);
                         }
                         bw_array_offset += influence_count;
@@ -383,7 +392,8 @@ namespace Lereldarion.Portal
                 Vector3 barycenter = a / Mathf.Max(1f, probe.vertices.Count);
 
                 float radius_sq = probe.vertices.Select(vertex => { Vector3 v = vertex - barycenter; return Vector3.Dot(v, v); }).Max();
-                float radius = Mathf.Sqrt(radius_sq); // TODO margin ?
+                // FIXME margin is a bandaid, it would be better to take triangles into account.
+                float radius = Mathf.Sqrt(radius_sq) * context.System.ProbeRadiusMargin;
 
                 float parent_index = probe.parent != null ? probe.parent.index : -1;
 

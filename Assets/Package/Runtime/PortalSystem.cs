@@ -33,5 +33,7 @@ namespace Lereldarion.Portal
         public Transform HeadBone;
         [Range(0, 7)]
         public int MeshProbeUvChannel = 7;
+        [Range(1f, 1.5f), Tooltip("Multiply radius by this margin factor to be conservative (triangles not counted when generating)")]
+        public float ProbeRadiusMargin = 1f;
     }
 }

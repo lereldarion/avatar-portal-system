@@ -6,6 +6,7 @@ namespace Lereldarion.Portal
     /// <summary>
     /// Override automatic mesh probe position for bone.
     /// TODO find the right semantics. Potentially list of localpos + radius, or just auto compute radius
+    /// Or count of probes and use clustering algorithm ?
     /// Could be used to split parenting by overriding parent to null or something
     /// </summary>
     public class PortalMeshProbeOverride : MonoBehaviour, IEditorOnly

@@ -29,8 +29,8 @@ namespace Lereldarion.Portal
         public float OcclusionBoxSize = 1000f;
 
         [Header("Mesh probes")]
-        [Tooltip("Root bone for mesh probe tree, usually the head to be synchronised with camera")]
-        public Transform MeshProbeRootBone;
+        [Tooltip("Head bone used to root the mesh probe tree and recreate head chop")]
+        public Transform HeadBone;
         [Range(0, 7)]
         public int MeshProbeUvChannel = 7;
     }

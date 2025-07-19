@@ -246,7 +246,7 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Materials.Array.data[0]
       value: 
-      objectReference: {fileID: 2100000, guid: 857556d0aefa7904db7dd66bd27bb0ca, type: 2}
+      objectReference: {fileID: 2100000, guid: 2b8fcafc9b410ac4aac6318b054103d8, type: 2}
     - target: {fileID: 1630794972795428178, guid: f81e8172c337a714894d6fdbd0900d8d,
         type: 3}
       propertyPath: m_Materials.Array.data[1]
@@ -2266,7 +2266,7 @@ MonoBehaviour:
   Camera1: {fileID: 1578434701}
   Visuals: {fileID: 1229071627}
   OcclusionBoxSize: 1000
-  MeshProbeRootBone: {fileID: 850611540}
+  HeadBone: {fileID: 850611540}
   MeshProbeUvChannel: 7
 --- !u!1 &2012814117
 GameObject:

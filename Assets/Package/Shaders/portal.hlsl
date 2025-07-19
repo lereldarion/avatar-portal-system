@@ -17,6 +17,7 @@ struct Header {
     bool is_enabled;
     bool camera_in_portal[2];
     bool stereo_eye_in_portal[2];
+    bool is_local; // Avatar animator value IsLocal set from animator
     uint portal_mask;
     uint mesh_probe_count;
 
@@ -242,7 +243,8 @@ uint4 Header::encode() {
     return uint4(
         (is_enabled ? 0x1 : 0x0) |
         (camera_in_portal[0] ? 0x2 : 0x0) | (camera_in_portal[1] ? 0x4 : 0x0) |
-        (stereo_eye_in_portal[0] ? 0x8 : 0x0) | (stereo_eye_in_portal[1] ? 0x10 : 0x0),
+        (stereo_eye_in_portal[0] ? 0x8 : 0x0) | (stereo_eye_in_portal[1] ? 0x10 : 0x0) |
+        (is_local ? 0x20 : 0x0),
         portal_mask,
         0,
         mesh_probe_count
@@ -255,6 +257,7 @@ static Header Header::decode(uint4 pixel) {
     h.camera_in_portal[1] = pixel.x & 0x4;
     h.stereo_eye_in_portal[0] = pixel.x & 0x8;
     h.stereo_eye_in_portal[1] = pixel.x & 0x10;
+    h.is_local = pixel.x & 0x20;
     h.portal_mask = pixel.y;
     h.mesh_probe_count = pixel.w;
     return h;
@@ -330,10 +333,16 @@ bool Header::camera_portal_state(float vrc_camera_mode) {
 }
 
 // Render function. Returns alpha value used to drive sealing shader.
-float portal_fragment_test(float3 fragment_world_pos, float2 portal_uv, Texture2D<uint4> state, float vrc_camera_mode) {
+float portal_fragment_test(float3 fragment_world_pos, float2 portal_uv, Texture2D<uint4> state, float vrc_camera_mode, float vrc_mirror_mode) {
     float alpha = 1;
+
     Header header = Header::decode(state);
-    if(header.is_enabled) {
+    
+    // Head chop replacement
+    const bool pixel_affected_by_head_chop = portal_uv.y == 1;
+    bool discard_pixel = header.is_local && pixel_affected_by_head_chop && vrc_camera_mode == 0 && vrc_mirror_mode == 0;
+
+    if(!discard_pixel && header.is_enabled) {
         const bool camera_in_portal = header.camera_portal_state(vrc_camera_mode);
 
         const uint mesh_probe_id = portal_uv.x;
@@ -371,7 +380,7 @@ float portal_fragment_test(float3 fragment_world_pos, float2 portal_uv, Texture2
 
         // If same space, discard if 1 mod 2 portals. If different space, discard if 0 mod 2 portals.
         const bool same_space = camera_in_portal == fragment_in_portal;
-        if(same_space == bool(intersect_count & 0x1)) { discard; }
+        discard_pixel = same_space == bool(intersect_count & 0x1);
 
         // Store pixel state in alpha channel negative value:
         // -1 for world space : tells sealing shader to leave it alone.
@@ -381,7 +390,7 @@ float portal_fragment_test(float3 fragment_world_pos, float2 portal_uv, Texture2
         alpha = fragment_in_portal ? portal_space_alpha : -1;
     }
 
-    // TODO add discard test IsLocal Head to replace HeadChop.
+    if(discard_pixel) { discard; }
     
     return alpha;
 }

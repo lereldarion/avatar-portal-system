@@ -23,6 +23,7 @@ Shader "Lereldarion/Portal/DebugItem" {
 
             uniform Texture2D<uint4> _Portal_State;
             uniform float _VRChatCameraMode;
+            uniform float _VRChatMirrorMode;
             
             struct MeshData {
                 float3 position : POSITION;
@@ -52,7 +53,7 @@ Shader "Lereldarion/Portal/DebugItem" {
 
                 half portal_alpha_data = portal_fragment_test(
                     input.world_position, input.portal_uv,
-                    _Portal_State, _VRChatCameraMode
+                    _Portal_State, _VRChatCameraMode, _VRChatMirrorMode
                 );
                 
                 return half4(_Color.rgb, portal_alpha_data);

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using AnimatorAsCode.V1;
 using nadena.dev.ndmf;
 using UnityEngine;
+using AnimatorAsCode.V1.VRC;
 
 [assembly: ExportsPlugin(typeof(Lereldarion.Portal.GeneratePortalSystemPlugin))]
 
@@ -155,7 +156,16 @@ namespace Lereldarion.Portal
 
             // Init animation
             {
+                SkinnedMeshRenderer camera_loop_renderer = root.GetComponent<SkinnedMeshRenderer>();
+
                 var layer = animator.Controller.NewLayer("Portal Init");
+
+                var start = layer.NewState("Start");
+
+                var set_local = layer.NewState("Set Local").WithAnimation(animator.Aac.NewClip()
+                    .Animating(edit => edit.Animates(camera_loop_renderer, "material._IsLocal").WithOneFrame(1))
+                );
+
                 var clip = animator.Aac.NewClip();
 
                 // Extend bounding box with animator.
@@ -167,7 +177,11 @@ namespace Lereldarion.Portal
                 clip.TogglingComponent(context.System.Camera0, true);
                 clip.TogglingComponent(context.System.Camera1, true);
 
-                layer.NewState("Init").WithAnimation(clip);
+                var setup = layer.NewState("Init").WithAnimation(clip);
+
+                start.TransitionsTo(set_local).When(layer.Av3().IsLocal.IsTrue());
+                set_local.AutomaticallyMovesTo(setup);
+                start.TransitionsTo(setup).When(layer.Av3().IsLocal.IsFalse());
             }
 
             Object.DestroyImmediate(system); // Cleanup components
@@ -220,7 +234,8 @@ namespace Lereldarion.Portal
 
         /// <summary>
         /// Generate a system mesh point for every mesh probe.
-        /// This is 2-pass to establish parent links properly.
+        /// Organise the mesh probe tree(s).
+        /// Tag head children to recreate head chop. TODO read headchop components for fine control ?
         /// </summary>
         /// <param name="scan_root">Transform to start scanning from</param>
         /// <param name="context">Data of the current portal system being built</param>
@@ -271,12 +286,13 @@ namespace Lereldarion.Portal
                     Mesh mesh = skinned_mesh_renderer.sharedMesh;
                     Vector3[] vertices = mesh.vertices;
 
-                    Vector2[] uv_probe_tag = new Vector2[mesh.vertexCount];
+                    Vector2[] uv = new Vector2[mesh.vertexCount];
 
                     // Pre-compute probe relations to bones
                     Transform[] bones = skinned_mesh_renderer.bones;
                     Matrix4x4[] bindposes = mesh.bindposes;
                     Dictionary<Transform, int> bone_id_mapping = Enumerable.Range(0, bones.Length).ToDictionary(i => bones[i], i => i);
+                    bool[] use_head_chop = bones.Select(bone => bone.IsChildOf(context.System.HeadBone)).ToArray();
                     int associate_to_probe(int bone_id, Vector3 vertex)
                     {
                         // Defer creating probe to here, to only create probe for bones that are used.
@@ -294,32 +310,37 @@ namespace Lereldarion.Portal
                         int influence_count = bone_per_vertex[vertex_id];
                         Vector3 vertex = vertices[vertex_id];
 
-                        // Vertex weights in decreasing order of influence ; use first 2.
-                        uv_probe_tag[vertex_id] = new Vector2(
-                            influence_count >= 1 ? associate_to_probe(bone_weights[bw_array_offset].boneIndex, vertex) : -1,
-                            influence_count >= 2 ? associate_to_probe(bone_weights[bw_array_offset + 1].boneIndex, vertex) : -1
-                        );
+                        // Vertex weights in decreasing order of influence ; use first 1 only.
+                        if (influence_count > 0) {
+                            int bone_id = bone_weights[bw_array_offset].boneIndex;
+                            uv[vertex_id] = new Vector2(
+                                associate_to_probe(bone_id, vertex),
+                                use_head_chop[bone_id] ? 1f : 0f
+                            );
+                        } else {
+                            uv[vertex_id] = new Vector2(-1f, 0f);
+                        }
                         bw_array_offset += influence_count;
                     }
 
                     // Edit mesh in place. No save to assets & swap so it will not be persistent, but sufficient for upload.
-                    mesh.SetUVs(context.System.MeshProbeUvChannel, uv_probe_tag);
+                    mesh.SetUVs(context.System.MeshProbeUvChannel, uv);
                 }
                 else if (mesh_renderer != null)
                 {
                     Mesh mesh = mesh_renderer.GetComponent<MeshFilter>().sharedMesh;
                     Vector3[] vertices = mesh.vertices;
-
                     MeshProbe probe = probe_for_transform(mesh_renderer.transform);
-                    Vector2[] uv_probe_tag = new Vector2[mesh.vertexCount];
+                    bool use_head_chop = mesh_renderer.transform.IsChildOf(context.System.HeadBone);
+                    float use_head_chop_value = use_head_chop ? 1f : 0f;
 
+                    Vector2[] uv = new Vector2[mesh.vertexCount];
                     for (int vertex_id = 0; vertex_id < mesh.vertexCount; vertex_id += 1)
                     {
                         probe.vertices.Add(vertices[vertex_id]);
-                        uv_probe_tag[vertex_id] = new Vector2(probe.index, -1);
+                        uv[vertex_id] = new Vector2(probe.index, use_head_chop_value);
                     }
-
-                    mesh.SetUVs(context.System.MeshProbeUvChannel, uv_probe_tag);
+                    mesh.SetUVs(context.System.MeshProbeUvChannel, uv);
                 }
             }
 
@@ -339,8 +360,8 @@ namespace Lereldarion.Portal
                 }
             }
 
-            // Invert links towards parent override
-            if (bone_to_probe.TryGetValue(context.System.MeshProbeRootBone, out MeshProbe root_probe))
+            // Invert links to make head the root
+            if (bone_to_probe.TryGetValue(context.System.HeadBone, out MeshProbe root_probe))
             {
                 MeshProbe next = root_probe.parent;
                 root_probe.parent = null;

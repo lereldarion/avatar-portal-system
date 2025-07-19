@@ -15,9 +15,10 @@ Shader "Lereldarion/Portal/Update" {
         [NoScaleOffset] _Portal_RT0("RT0", 2D) = ""
         [NoScaleOffset] _Portal_RT1("RT1", 2D) = ""
 
-        [Header(Portals)]
+        [Header(Animator controls)]
         [ToggleUI] _Portal_System_Enabled("Set enabled flag in state texture", Integer) = 1
         [ToggleUI] _Portal_Camera_Force_World("Force camera to world", Integer) = 0
+        [ToggleUI] _IsLocal("Animator IsLocal", Integer) = 0
 
         _Portal_Count("Portal count to scan", Integer) = 0
         _Mesh_Probe_Count("Mesh portal count to update", Integer) = 0
@@ -232,6 +233,8 @@ Shader "Lereldarion/Portal/Update" {
 
             uniform uint _Portal_System_Enabled;
             uniform uint _Portal_Camera_Force_World;
+            uniform uint _IsLocal;
+
             uniform uint _Portal_Count;
             uniform uint _Mesh_Probe_Count;
             uniform float _Valid_Movement_Max_Distance;
@@ -286,6 +289,7 @@ Shader "Lereldarion/Portal/Update" {
 
                 Header header = Header::decode(_Portal_RT0);
                 header.is_enabled = _Portal_System_Enabled;
+                header.is_local = _IsLocal;
                 header.mesh_probe_count = _Mesh_Probe_Count; // Make it available because we have unused space.
                 const uint old_portal_mask = header.portal_mask;
                 header.portal_mask = 0x0;

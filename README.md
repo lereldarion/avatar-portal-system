@@ -27,7 +27,13 @@ Some components control probe generation : `PortalMeshProbeMergeChildren`.
 
 Avatar renderers should then combine mesh probe state (from UV id) and camera state found in `_Portal_RT1` to determine if they should be visible or not depending on portal positions.
 
+### Head Chop Replacement
+Mesh probes require accurate positions, and camera loop are seemingly run at the time of the main camera.
+Thus by default the local avatar mesh would have head chop active (scale=0) and head related positions would be unusable locally (but ok for remotes).
+The solution is to disable *head chop* with the `VRCHeadChop` component, and manually implement it with discard in the shader.
+For now there is no way to animate it or fine-tune specific parts.
+
 ### TODO
-- replace head chop by shader discard ; use uv.y as filter. Or use distance to camera discard (sphere)
+- poiyomi integration
 - nice visuals. Background from DepthTexture ? Borders with VHS effect ?
 - make nice package with instructions from template : https://github.com/vrchat-community/template-package

@@ -54,6 +54,7 @@ Shader "Lereldarion/Portal/Standard"
         #include "portal.hlsl"
         uniform Texture2D<uint4> _Portal_State;
         uniform float _VRChatCameraMode;
+        uniform float _VRChatMirrorMode;
     ENDCG
 
     SubShader
@@ -109,7 +110,7 @@ Shader "Lereldarion/Portal/Standard"
                 half4 pixel = fragBase(i);
                 pixel.a = portal_fragment_test(
                     IN_WORLDPOS(i), portal_uv,
-                    _Portal_State, _VRChatCameraMode
+                    _Portal_State, _VRChatCameraMode, _VRChatMirrorMode
                 );
                 return pixel;
             }
@@ -159,7 +160,7 @@ Shader "Lereldarion/Portal/Standard"
                 half4 pixel = fragAdd(i);
                 portal_fragment_test(
                     i.posWorld, portal_uv,
-                    _Portal_State, _VRChatCameraMode
+                    _Portal_State, _VRChatCameraMode, _VRChatMirrorMode
                 );
                 return pixel;
             }

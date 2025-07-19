@@ -2,6 +2,7 @@
 Shader "Lereldarion/Portal/DebugConfiguration" {
     Properties {
         [NoScaleOffset] _Portal_State("State texture", 2D) = ""
+        [ToggleUI] _Portal_Debug_Show("Show anything", Integer) = 1
         [ToggleUI] _Portal_Debug_Show_Camera("Show cameras", Integer) = 0
     }
     SubShader {
@@ -31,6 +32,7 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
             uniform Texture2D<half4> _Lereldarion_Portal_Seal_GrabPass;
             uniform float4 _VRChatScreenCameraRot;
             uniform float4 _VRChatPhotoCameraRot;
+            uniform uint _Portal_Debug_Show;
             uniform uint _Portal_Debug_Show_Camera;
 
             struct MeshData {
@@ -85,7 +87,7 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
             [maxvertexcount(9 + 6 + 2 * 10)]
             void geometry_stage(point MeshData input[1], uint primitive_id : SV_PrimitiveID, uint instance : SV_GSInstanceID, inout LineStream<LinePoint> stream) {
                 UNITY_SETUP_INSTANCE_ID(input[0]);
-                if(primitive_id > 0) { return; }
+                if(primitive_id > 0 || !_Portal_Debug_Show) { return; }
 
                 LineDrawer drawer = LineDrawer::init(half3(0, 0, 0));
                 const Header header = Header::decode(_Portal_State);

@@ -73,10 +73,11 @@ namespace Lereldarion
 
             var ctrl = aac.NewAnimatorController();
 
+            const string global_toggle_name = "Portal/System";
             {
                 var layer = ctrl.NewLayer("System");
 
-                var parameter = layer.BoolParameter("Portal/System");
+                var parameter = layer.BoolParameter(global_toggle_name);
                 ma.NewParameter(parameter).WithDefaultValue(false);
                 new_installed_menu_item().Name("System").Toggle(parameter);
 
@@ -104,6 +105,27 @@ namespace Lereldarion
                 // Disable system at export. Required for cameras.
                 config.SystemRoot.SetActive(false);
             }
+
+            {
+                var layer = ctrl.NewLayer("Debug");
+
+                var parameter = layer.BoolParameter("Portal/Debug");
+                ma.NewParameter(parameter).WithDefaultValue(false);
+                new_installed_menu_item().Name("Debug").Toggle(parameter);
+
+                var renderer = config.SystemRoot.transform.Find("Visuals").GetComponent<MeshRenderer>();
+
+                var disabled = layer.NewState("Disabled").WithAnimation(aac.NewClip()
+                    .Animating(edit => edit.Animates(renderer, "material._Portal_Debug_Show").WithOneFrame(0))
+                );
+                var enabled = layer.NewState("Enabled").WithAnimation(aac.NewClip()
+                    .Animating(edit => edit.Animates(renderer, "material._Portal_Debug_Show").WithOneFrame(1))
+                );
+
+                disabled.TransitionsTo(enabled).When(parameter.IsTrue());
+                enabled.TransitionsTo(disabled).When(parameter.IsFalse());
+            }
+
             for (int i = 0; i < config.MenuPortals.Length; i += 1)
             {
                 var layer = ctrl.NewLayer($"Menu{i}");
@@ -111,6 +133,8 @@ namespace Lereldarion
                 var parameter = layer.BoolParameter($"Portal/Menu{i}");
                 ma.NewParameter(parameter).WithDefaultValue(false).NotSaved();
                 new_installed_menu_item().Name($"Portal{i}").Toggle(parameter);
+
+                var global_toggle = layer.BoolParameter(global_toggle_name);
 
                 var disabled = layer.NewState("Disabled").WithAnimation(
                     aac.NewClip()
@@ -128,10 +152,11 @@ namespace Lereldarion
 
                 disabled.DrivingLocally().Drives(parameter, false);
                 disabled.TransitionsTo(enabled).WithTransitionDurationSeconds(0.3f)
-                    .When(parameter.IsTrue());
+                    .When(parameter.IsTrue())
+                    .And(global_toggle.IsTrue());
                 enabled.TransitionsTo(disabled).WithTransitionDurationSeconds(0.3f)
                     .When(parameter.IsFalse())
-                    .Or().When(layer.BoolParameter("Portal/System").IsFalse());
+                    .Or().When(global_toggle.IsFalse());
             }
 
             void setup_hand_portal(string name, VRCParentConstraint anchor, System.Func<AacAv3, AacFlEnumIntParameter<AacAv3.Av3Gesture>> gesture)
@@ -139,6 +164,7 @@ namespace Lereldarion
                 var layer = ctrl.NewLayer(name);
 
                 var contact = layer.BoolParameter($"Portal/{name}/Contact");
+                var global_toggle = layer.BoolParameter(global_toggle_name);
                 var portal = anchor.transform.Find("Portal").GetComponent<VRCParentConstraint>();
 
                 var disabled = layer.NewState("Disabled").WithAnimation(
@@ -177,7 +203,8 @@ namespace Lereldarion
 
                 // TODO interrupt stuff or wait times to avoid spawning portal by error.
                 disabled.TransitionsTo(in_hand).WithTransitionDurationSeconds(0.3f)
-                    .When(gesture(layer.Av3()).IsEqualTo(AacAv3.Av3Gesture.Victory));
+                    .When(gesture(layer.Av3()).IsEqualTo(AacAv3.Av3Gesture.Victory))
+                    .And(global_toggle.IsTrue());
                 in_hand.TransitionsTo(disabled).WithTransitionDurationSeconds(0.3f)
                     .When(gesture(layer.Av3()).IsEqualTo(AacAv3.Av3Gesture.Fist));
 
@@ -186,6 +213,8 @@ namespace Lereldarion
                     .When(gesture(layer.Av3()).IsEqualTo(AacAv3.Av3Gesture.Victory))
                     .And(contact.IsTrue());
                 world_to_hand.AutomaticallyMovesTo(in_hand);
+
+                layer.AnyTransitionsTo(disabled).WithNoTransitionToSelf().When(global_toggle.IsFalse());
 
                 portal.transform.localScale = Vector3.zero;
             }

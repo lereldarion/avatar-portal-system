@@ -34,6 +34,17 @@ The solution is to disable *head chop* with the `VRCHeadChop` component, and man
 For now there is no way to animate it or fine-tune specific parts.
 
 ### TODO
+
+"Discard" Bug(s?) :
+- Conditions : VR, camera in world, object in portal (with portal background)
+- Under certain angles / map conditions, mesh in portal disappears or blends with background
+- Waving hand in this condition : incoherent border of objects that "lag". Grabpass from last frame ?
+- Interface sealing does not work at all in mock HMD in editor.
+
+Normal TODOs
+- locally fix head state to camera state as desync is annoying
+- shadowcaster setup is not great
+- thelvaen : vs fullscreen failed, add margins
 - poiyomi integration
 - nice visuals. Background from DepthTexture ? Borders with VHS effect ?
 - make nice package with instructions from template : https://github.com/vrchat-community/template-package

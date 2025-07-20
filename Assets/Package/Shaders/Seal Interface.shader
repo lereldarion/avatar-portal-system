@@ -208,7 +208,7 @@ Shader "Lereldarion/Portal/Seal Interface" {
                         }
                     } else {
                         // One quad per enabled portal
-                        if(instance < 32 && header.portal_mask & (0x1 << instance)) {
+                        if(header.portal_mask & (0x1 << instance)) {
                             const Portal p = Portal::decode(_Portal_State, instance);
 
                             // We need the quad only for the screenspace pixel position to activate, not its depth position.
@@ -303,6 +303,103 @@ Shader "Lereldarion/Portal/Seal Interface" {
 
                 // TODO portal visuals
                 return half4(0, 0, 0, 1);
+            }
+            ENDCG
+        }
+
+        Pass {
+            Name "Portal Surfaces Shadowcaster"
+	        Tags { "LightMode" = "ShadowCaster" }
+
+            // Emit portal surfaces as opaque for shadows.
+
+            Cull Off
+
+            CGPROGRAM
+            #pragma target 5.0
+            #pragma multi_compile_instancing
+            #pragma multi_compile_shadowcaster
+
+            #pragma vertex vertex_stage
+            #pragma geometry geometry_stage
+            #pragma fragment fragment_stage
+
+            #include "UnityCG.cginc"
+            #include "portal.hlsl"
+
+            uniform Texture2D<uint4> _Portal_State;
+
+            struct MeshData {
+                UNITY_VERTEX_INPUT_INSTANCE_ID
+            };
+            
+            struct FragmentData {
+                V2F_SHADOW_CASTER;
+
+                nointerpolation bool is_ellipse : CAMERA_IN_PORTAL;
+                float2 portal_axis_coords : PORTAL_AXIS_COORDS;
+                
+                UNITY_VERTEX_OUTPUT_STEREO
+            };
+
+            struct ShadowCasterAppData {
+                // object space
+                float3 vertex;
+                float3 normal;
+            };
+            
+            void vertex_stage (MeshData input, out MeshData output) {
+                UNITY_SETUP_INSTANCE_ID(input);
+                UNITY_TRANSFER_INSTANCE_ID(input, output);
+            }
+
+            [instance(32)]
+            [maxvertexcount(4)]
+            void geometry_stage(point MeshData input[1], uint primitive_id : SV_PrimitiveID, uint instance : SV_GSInstanceID, inout TriangleStream<FragmentData> stream) {
+                UNITY_SETUP_INSTANCE_ID(input[0]);
+
+                // Input mesh just needs one point
+                if(primitive_id != 0) { return ; }
+
+                FragmentData output;
+                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
+
+                const Header header = Header::decode(_Portal_State);
+                if(header.is_enabled) {
+                    const float2 quad[4] = { float2(-1, -1), float2(-1, 1), float2(1, -1), float2(1, 1) };
+                    
+                    // One quad per enabled portal
+                    if(header.portal_mask & (0x1 << instance)) {
+                        const Portal portal = Portal::decode(_Portal_State, instance);
+
+                        ShadowCasterAppData v;
+                        const bool normal_towards_camera = dot(_WorldSpaceCameraPos - portal.position, portal.normal) >= 0;
+                        v.normal = UnityWorldToObjectDir(normal_towards_camera ? portal.normal : -portal.normal);
+
+                        FragmentData output;
+                        UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
+                        output.is_ellipse = portal.is_ellipse;
+
+                        [unroll] for(uint i = 0; i < 4; i += 1) {
+                            output.portal_axis_coords = quad[i];
+                            const float3 position_ws = portal.position + quad[i].x * portal.x_axis + quad[i].y * portal.y_axis;
+                            v.vertex = mul(unity_WorldToObject, float4(position_ws, 1)).xyz;
+                            TRANSFER_SHADOW_CASTER_NORMALOFFSET(output);
+                            stream.Append(output);
+                        }
+                    }
+                }
+            }
+
+            half4 fragment_stage (FragmentData input) : SV_Target {
+                UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
+
+                // Alpha cut ellipse shape from portal
+                if(input.is_ellipse && dot(input.portal_axis_coords, input.portal_axis_coords) > 1) {
+                    discard;
+                }
+
+                SHADOW_CASTER_FRAGMENT(input);
             }
             ENDCG
         }

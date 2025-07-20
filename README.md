@@ -44,7 +44,6 @@ For now there is no way to animate it or fine-tune specific parts.
 Normal TODOs
 - locally fix head state to camera state as desync is annoying
 - shadowcaster setup is not great
-- thelvaen : vs fullscreen failed, add margins
 - poiyomi integration
 - nice visuals. Background from DepthTexture ? Borders with VHS effect ?
 - make nice package with instructions from template : https://github.com/vrchat-community/template-package

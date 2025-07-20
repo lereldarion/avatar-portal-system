@@ -199,7 +199,7 @@ Shader "Lereldarion/Portal/Seal Interface" {
                             // Generate in VS close to near clip plane. Having non CS positions is essential to return to WS later.
                             // Add margins in case the matrix has some rotation/skew
                             const float quad_z = near_plane_z * 1.1; // z margin
-                            const float quad_xy = quad_z * tan_half_fov * 1.1; // xy margin
+                            const float quad_xy = quad_z * tan_half_fov * 1.3; // xy margin
                             
                             [unroll] for(uint i = 0; i < 4; i += 1) {
                                 quad_vs[i] = float3(quad_corners[i] * quad_xy, quad_z);

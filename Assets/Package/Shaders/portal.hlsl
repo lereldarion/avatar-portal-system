@@ -318,17 +318,17 @@ static MeshProbeState MeshProbeState::decode(uint4 pixel) {
 ///////////////////////////////////////////////////////////////////////////
 
 bool Header::camera_portal_state(float vrc_camera_mode) {
-    #ifdef USING_STEREO_MATRICES
+    #if defined(USING_STEREO_MATRICES)
     if(vrc_camera_mode == 0) {
         // VR mode: only the main one is tracked with stereo offsets.
-        return stereo_eye_in_portal[unity_StereoEyeIndex];
+        return unity_StereoEyeIndex == 0 ? stereo_eye_in_portal[0] : stereo_eye_in_portal[1];
     } else {
         // For all other assume this is photo camera. Maybe restrict to 1-2 (VR or desktop handheld camera)
         return camera_in_portal[1];
     }
     #else
     // Assume desktop centered or photo camera ; these are the only 2 we track.
-    return camera_in_portal[vrc_camera_mode == 0 ? 0 : 1];
+    return vrc_camera_mode == 0 ? camera_in_portal[0] : camera_in_portal[1];
     #endif
 }
 
@@ -352,17 +352,23 @@ float portal_fragment_test(float3 fragment_world_pos, float2 portal_uv, Texture2
         uint intersect_count = 0;
         float max_intersection_ray_01 = -1;
         uint closest_portal_id = 0;
+
+        #if defined(USING_STEREO_MATRICES)
+        const float3 camera_ws = unity_StereoEyeIndex == 0 ? unity_StereoWorldSpaceCameraPos[0] : unity_StereoWorldSpaceCameraPos[1];
+        #else
+        const float3 camera_ws = _WorldSpaceCameraPos;
+        #endif
         
         [loop] while(header.portal_mask) {
             const uint index = pop_active_portal(header.portal_mask);
             const bool traversing_portal = mesh_probe.traversing_portal_mask & (0x1 << index);
 
             const PortalPixel0 p0 = PortalPixel0::decode(state, index);
-            if(!(traversing_portal || p0.fast_intersect(_WorldSpaceCameraPos, fragment_world_pos))) { continue; }
+            if(!(traversing_portal || p0.fast_intersect(camera_ws, fragment_world_pos))) { continue; }
             const Portal portal = Portal::decode(p0, state, index);
             
             float intersection_ray_01;
-            if(portal.segment_intersect(_WorldSpaceCameraPos, fragment_world_pos, intersection_ray_01)) {
+            if(portal.segment_intersect(camera_ws, fragment_world_pos, intersection_ray_01)) {
                 intersect_count += 1;
 
                 if(intersection_ray_01 > max_intersection_ray_01) {

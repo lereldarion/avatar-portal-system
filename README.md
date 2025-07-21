@@ -35,9 +35,10 @@ For now there is no way to animate it or fine-tune specific parts.
 
 ### TODO
 
-Bug(s?) :
-- Conditions : VR, camera in world, object in portal (with portal background)
-- Waving hand in this condition : incoherent border of objects that "lag". Grabpass from last frame ? Stereo Offsets lagging ? Test non VR
+Discard Lag Bug :
+- Conditions : VR, camera in world, object in world in front of portal background
+- Waving hand in this condition : incoherent border of objects that "lag" and show through the world.
+- Grabpass from last frame ? Stereo Offsets lagging ? Only in VR SPS-I
 
 Normal TODOs
 - locally fix head state to camera state as desync is annoying

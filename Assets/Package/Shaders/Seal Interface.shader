@@ -2,9 +2,7 @@
 Shader "Lereldarion/Portal/Seal Interface" {
     Properties {
         [NoScaleOffset] _Portal_State("Portal state texture", 2D) = ""
-        _Portal_Seal_Stencil_Bit("Power of 2 bit used to avoid repetition when sealing", Integer) = 64
-        
-        [HideInInspector] _Portal_Runtime_0("Runtime 0 to disable optimisations", Float) = 0
+        _Portal_Seal_Stencil_Bit("Power of 2 bit used to avoid repetition when sealing", Integer) = 64        
     }
     SubShader {
         Tags {
@@ -147,7 +145,6 @@ Shader "Lereldarion/Portal/Seal Interface" {
 
             uniform Texture2D<uint4> _Portal_State;
             uniform float _VRChatCameraMode;
-            uniform float _Portal_Runtime_0;
 
             // portal ids of pixels of objects in portal space
             uniform Texture2D<float4> _Lereldarion_Portal_Seal_GrabPass;
@@ -251,10 +248,14 @@ Shader "Lereldarion/Portal/Seal Interface" {
             half4 fragment_stage (FragmentData input, out float output_depth : SV_Depth) : SV_Target {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
 
-                // Force evaluation here for VR mode.
+                #if defined(USING_STEREO_MATRICES)
+                // Force evaluation here for VR mode. Workaround for "discard bug" (see commits). Removing the dynamic index helps.
                 // Using the constant directly generates a miscompile in VR in case 1, which accessed garbage from the constant buffer.
-                // Cf "discard bug" in commits. This whole function is on the cliff to compiler internal error :(
-                const float3 camera_ws = _WorldSpaceCameraPos + _Portal_Runtime_0;
+                // This whole function is on the cliff to compiler internal error :(
+                const float3 camera_ws = unity_StereoEyeIndex == 0 ? unity_StereoWorldSpaceCameraPos[0] : unity_StereoWorldSpaceCameraPos[1];
+                #else
+                const float3 camera_ws = _WorldSpaceCameraPos;
+                #endif
                 
                 const float3 ray_ws = mul((float3x3) unity_MatrixInvV, input.position_vs);
                 const float4 grab_pass_pixel = _Lereldarion_Portal_Seal_GrabPass[_Lereldarion_Portal_Seal_GrabPass_TexelSize.zw * input.grab_pos.xy / input.grab_pos.w];

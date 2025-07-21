@@ -3,6 +3,8 @@ Shader "Lereldarion/Portal/Seal Interface" {
     Properties {
         [NoScaleOffset] _Portal_State("Portal state texture", 2D) = ""
         _Portal_Seal_Stencil_Bit("Power of 2 bit used to avoid repetition when sealing", Integer) = 64
+        
+        [HideInInspector] _Portal_Runtime_0("Runtime 0 to disable optimisations", Float) = 0
     }
     SubShader {
         Tags {
@@ -135,6 +137,7 @@ Shader "Lereldarion/Portal/Seal Interface" {
             CGPROGRAM
             #pragma target 5.0
             #pragma multi_compile_instancing
+
             #pragma vertex vertex_stage
             #pragma geometry geometry_stage
             #pragma fragment fragment_stage
@@ -144,9 +147,11 @@ Shader "Lereldarion/Portal/Seal Interface" {
 
             uniform Texture2D<uint4> _Portal_State;
             uniform float _VRChatCameraMode;
+            uniform float _Portal_Runtime_0;
 
             // portal ids of pixels of objects in portal space
             uniform Texture2D<float4> _Lereldarion_Portal_Seal_GrabPass;
+            uniform float4 _Lereldarion_Portal_Seal_GrabPass_TexelSize;
 
             struct MeshData {
                 UNITY_VERTEX_INPUT_INSTANCE_ID
@@ -246,34 +251,44 @@ Shader "Lereldarion/Portal/Seal Interface" {
             half4 fragment_stage (FragmentData input, out float output_depth : SV_Depth) : SV_Target {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
 
-                const float3 ray_ws = mul((float3x3) unity_MatrixInvV, input.position_vs);
-
-                float2 grab_pass_size;
-                _Lereldarion_Portal_Seal_GrabPass.GetDimensions(grab_pass_size.x, grab_pass_size.y);
-                const float4 grab_pass_pixel = _Lereldarion_Portal_Seal_GrabPass[grab_pass_size * input.grab_pos.xy / input.grab_pos.w];
+                // Force evaluation here for VR mode.
+                // Using the constant directly generates a miscompile in VR in case 1, which accessed garbage from the constant buffer.
+                // Cf "discard bug" in commits. This whole function is on the cliff to compiler internal error :(
+                const float3 camera_ws = _WorldSpaceCameraPos + _Portal_Runtime_0;
                 
-                if(grab_pass_pixel.a <= -1) {
+                const float3 ray_ws = mul((float3x3) unity_MatrixInvV, input.position_vs);
+                const float4 grab_pass_pixel = _Lereldarion_Portal_Seal_GrabPass[_Lereldarion_Portal_Seal_GrabPass_TexelSize.zw * input.grab_pos.xy / input.grab_pos.w];
+
+                output_depth = UNITY_NEAR_CLIP_VALUE; // Default value
+                
+                [branch] if(grab_pass_pixel.a <= -1) {
                     // If pixel was from a portal-aware shader
                     const uint n = -(1 + grab_pass_pixel.a);
-                    if (n == 0) {
-                        // World space
-                        discard;
-                    } else {
-                        // Portal space : seal depth
-                        if (n == 1) {
+                    [forcecase] switch(n) {
+                        case 0: {
+                            // World space
+                            discard;
+                            break;
+                        }
+                        case 1: {
                             // Portal space without intersection : seal to near plane
                             output_depth = UNITY_NEAR_CLIP_VALUE;
-                        } else {
+                            break;
+                        }
+                        default: {
                             // Portal space with portal surface depth
                             const uint portal_id = n - 2;
-                            const Portal p = Portal::decode(_Portal_State, portal_id);
+                            const Portal portal = Portal::decode(_Portal_State, portal_id);
                             float ray_distance = 0;
-                            p.ray_intersect(_WorldSpaceCameraPos, ray_ws, ray_distance); // Should be success
-                            output_depth = clamped_depth_from_world_position(_WorldSpaceCameraPos + ray_ws * ray_distance);
+                            portal.ray_intersect(camera_ws, ray_ws, ray_distance); // Should be success
+                            output_depth = clamped_depth_from_world_position(camera_ws + ray_ws * ray_distance);
+                            break;
                         }
-                        return half4(grab_pass_pixel.rgb, 1);
                     }
+                    return half4(grab_pass_pixel.rgb, 1);
                 }
+
+                // Portal world background
 
                 // Scan portal for intersections
                 uint intersect_count = 0;
@@ -281,11 +296,11 @@ Shader "Lereldarion/Portal/Seal Interface" {
                 [loop] while(input.portal_mask) {
                     const uint index = pop_active_portal(input.portal_mask);
                     const PortalPixel0 p0 = PortalPixel0::decode(_Portal_State, index);
-                    if(!p0.fast_intersect(_WorldSpaceCameraPos, _WorldSpaceCameraPos + ray_ws)) { continue; }
+                    if(!p0.fast_intersect(camera_ws, camera_ws + ray_ws)) { continue; }
                     const Portal portal = Portal::decode(p0, _Portal_State, index);
                     
                     float ray_distance;
-                    if(portal.ray_intersect(_WorldSpaceCameraPos, ray_ws, ray_distance)) {
+                    if(portal.ray_intersect(camera_ws, ray_ws, ray_distance)) {
                         intersect_count += 1;
                         max_intersection_ray_distance = max(max_intersection_ray_distance, ray_distance);
                     }
@@ -299,7 +314,7 @@ Shader "Lereldarion/Portal/Seal Interface" {
                 
                 // Depth logic : use the depth of the last portal intersection, which must go from world to portal.
                 // Otherwise it would have been discarded.
-                output_depth = clamped_depth_from_world_position(_WorldSpaceCameraPos + ray_ws * max_intersection_ray_distance);
+                output_depth = clamped_depth_from_world_position(camera_ws + ray_ws * max_intersection_ray_distance);
 
                 // TODO portal visuals
                 return half4(0, 0, 0, 1);

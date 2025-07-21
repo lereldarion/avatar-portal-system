@@ -36,6 +36,7 @@ Material:
     - _Mesh_Probe_Count: 96
     - _Portal_Camera_Force_World: 0
     - _Portal_Count: 4
+    - _Portal_Head_Mesh_Probe: 0
     - _Portal_System_Enabled: 1
     m_Floats:
     - _Camera0_Depth: 0.141

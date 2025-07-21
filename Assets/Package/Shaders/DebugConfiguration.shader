@@ -118,7 +118,7 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
                     // Only display camera position if not the current one.
                     const float s = 0.1;
                     if(distance(position, _WorldSpaceCameraPos) > s) {
-                        const bool in_portal = header.camera_in_portal[instance];
+                        const bool in_portal = instance == 0 ? header.main_camera_in_portal : header.photo_camera_in_portal;
                         drawer.set_color(half3(in_portal, !in_portal, 0));
                         stream.RestartStrip();
                         drawer.solid_ws(stream, position + quaternion_rotate(rotation, -float3(s, 0, 0)));

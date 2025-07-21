@@ -27,6 +27,11 @@ Some components control probe generation : `PortalMeshProbeMergeChildren`.
 
 Avatar renderers should then combine mesh probe state (from UV id) and camera state found in `_Portal_RT1` to determine if they should be visible or not depending on portal positions.
 
+Mesh probes form trees.
+The main armature will be rooted at the head bone (which **must** be defined) to closely match main camera.
+An incoherent system state can happen where mesh head state is different from local head camera state.
+In this case, to best follow what others see, local camera state will be set to head mesh state.
+
 ### Head Chop Replacement
 Mesh probes require accurate positions, and camera loop are seemingly run at the time of the main camera.
 Thus by default the local avatar mesh would have head chop active (scale=0) and head related positions would be unusable locally (but ok for remotes).
@@ -48,7 +53,6 @@ Lag Bugs :
 - Add timestamps checks for grabpass and camera loop : matches the same frame. Dammit.
 
 Normal TODOs
-- locally fix head state to camera state as desync is annoying
 - shadowcaster setup is not good : try to think of a semantic that works, probably distinguish between shadowcaster from camera and from lights
 - poiyomi integration
 - nice visuals. Background from DepthTexture ? Borders with VHS effect ?

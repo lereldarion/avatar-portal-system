@@ -4,6 +4,7 @@ using AnimatorAsCode.V1;
 using nadena.dev.ndmf;
 using UnityEngine;
 using AnimatorAsCode.V1.VRC;
+using Cysharp.Threading.Tasks;
 
 [assembly: ExportsPlugin(typeof(Lereldarion.Portal.GeneratePortalSystemPlugin))]
 
@@ -135,10 +136,11 @@ namespace Lereldarion.Portal
                 generated_meshes.Add(mesh);
             }
 
-            system.Update.SetInteger("_Portal_Count", context.PortalCount);
-            system.Update.SetInteger("_Mesh_Probe_Count", context.MeshProbeCount);
             system.Update.SetFloat("_Camera0_FarPlane", context.System.Camera0.farClipPlane);
             system.Update.SetFloat("_Camera1_FarPlane", context.System.Camera1.farClipPlane);
+            system.Update.SetInteger("_Portal_Count", context.PortalCount);
+            system.Update.SetInteger("_Mesh_Probe_Count", context.MeshProbeCount);
+            system.Update.SetInteger("_Portal_Head_Mesh_Probe", context.HeadMeshProbeId);
 
             // Make single point mesh for visuals.
             {
@@ -194,6 +196,7 @@ namespace Lereldarion.Portal
             public List<Vertex> Vertices;
             public int PortalCount = 0;
             public int MeshProbeCount = 0;
+            public int HeadMeshProbeId = 0;
         }
         private class AnimatorContext
         {
@@ -353,6 +356,10 @@ namespace Lereldarion.Portal
                 }
             }
 
+            // Force creation of head probe, even if no mesh is attached to it.
+            // In case you have no head-related mesh, you should still create a bone, as it is considered a "root" for your local main camera.
+            MeshProbe head_probe = probe_for_transform(context.System.HeadBone);
+
             // Now that all probes are created, set parent links
             Dictionary<Transform, MeshProbe> bone_to_probe = probe_list.ToDictionary(probe => probe.transform, probe => probe);
             foreach (MeshProbe probe in probe_list)
@@ -369,12 +376,11 @@ namespace Lereldarion.Portal
                 }
             }
 
-            // Invert links to make head the root
-            if (bone_to_probe.TryGetValue(context.System.HeadBone, out MeshProbe root_probe))
+            // Invert links to make head the root.
             {
-                MeshProbe next = root_probe.parent;
-                root_probe.parent = null;
-                MeshProbe done = root_probe;
+                MeshProbe next = head_probe.parent;
+                head_probe.parent = null;
+                MeshProbe done = head_probe;
                 while (next != null)
                 {
                     MeshProbe current = next;
@@ -384,7 +390,7 @@ namespace Lereldarion.Portal
                 }
             }
 
-            // Generate probes
+            // Generate probes points in mesh
             foreach (MeshProbe probe in probe_list)
             {
                 Vector3 a = Vector3.zero;
@@ -407,6 +413,7 @@ namespace Lereldarion.Portal
                 });
             }
             context.MeshProbeCount = probe_list.Count;
+            context.HeadMeshProbeId = head_probe.index;
 
             // Cleanup components. Need to search them first.
             foreach (var merger in context.System.ScanRoot.GetComponentsInChildren<PortalMeshProbeMergeChildren>(true))

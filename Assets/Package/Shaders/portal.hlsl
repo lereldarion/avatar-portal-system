@@ -15,7 +15,8 @@
 
 struct Header {
     bool is_enabled;
-    bool camera_in_portal[2];
+    bool main_camera_in_portal;
+    bool photo_camera_in_portal;
     bool stereo_eye_in_portal[2];
     bool is_local; // Avatar animator value IsLocal set from animator
     uint portal_mask;
@@ -140,6 +141,7 @@ bool Portal::segment_intersect(float3 origin, float3 end, out float intersection
     // ray line p(t) = origin + ray * t
     const float t = dot(position - origin, normal) / dot(ray, normal);
     // t in [0, 1] <=> intersect point between [origin, end].
+    // Also handles ray==0 as t would be +/-inf.
     if(t == saturate(t)) {
         intersection_ray_01 = t;
         return is_plane_point_in_shape(origin + ray * t);
@@ -243,7 +245,7 @@ float Portal::distance_to_point(float3 p) {
 uint4 Header::encode() {
     return uint4(
         (is_enabled ? 0x1 : 0x0) |
-        (camera_in_portal[0] ? 0x2 : 0x0) | (camera_in_portal[1] ? 0x4 : 0x0) |
+        (main_camera_in_portal ? 0x2 : 0x0) | (photo_camera_in_portal ? 0x4 : 0x0) |
         (stereo_eye_in_portal[0] ? 0x8 : 0x0) | (stereo_eye_in_portal[1] ? 0x10 : 0x0) |
         (is_local ? 0x20 : 0x0),
         portal_mask,
@@ -254,8 +256,8 @@ uint4 Header::encode() {
 static Header Header::decode(uint4 pixel) { 
     Header h;
     h.is_enabled = pixel.x & 0x1;
-    h.camera_in_portal[0] = pixel.x & 0x2;
-    h.camera_in_portal[1] = pixel.x & 0x4;
+    h.main_camera_in_portal = pixel.x & 0x2;
+    h.photo_camera_in_portal = pixel.x & 0x4;
     h.stereo_eye_in_portal[0] = pixel.x & 0x8;
     h.stereo_eye_in_portal[1] = pixel.x & 0x10;
     h.is_local = pixel.x & 0x20;
@@ -326,11 +328,11 @@ bool Header::camera_portal_state(float vrc_camera_mode) {
         return unity_StereoEyeIndex == 0 ? stereo_eye_in_portal[0] : stereo_eye_in_portal[1];
     } else {
         // For all other assume this is photo camera. Maybe restrict to 1-2 (VR or desktop handheld camera)
-        return camera_in_portal[1];
+        return photo_camera_in_portal;
     }
     #else
     // Assume desktop centered or photo camera ; these are the only 2 we track.
-    return vrc_camera_mode == 0 ? camera_in_portal[0] : camera_in_portal[1];
+    return vrc_camera_mode == 0 ? main_camera_in_portal : photo_camera_in_portal;
     #endif
 }
 

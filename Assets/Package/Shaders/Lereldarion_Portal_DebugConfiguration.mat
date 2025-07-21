@@ -34,7 +34,7 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints:
     - _Portal_Debug_Show: 0
-    - _Portal_Debug_Show_Camera: 0
+    - _Portal_Debug_Show_Camera: 1
     m_Floats:
     - _Portal_Data_Source: 1
     - _Use_Portal_CRT: 1

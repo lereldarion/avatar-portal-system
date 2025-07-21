@@ -20,6 +20,7 @@ struct Header {
     bool is_local; // Avatar animator value IsLocal set from animator
     uint portal_mask;
     uint mesh_probe_count;
+    float time; // Debug : time of camera loop update
 
     bool camera_portal_state(float vrc_camera_mode);
 
@@ -246,7 +247,7 @@ uint4 Header::encode() {
         (stereo_eye_in_portal[0] ? 0x8 : 0x0) | (stereo_eye_in_portal[1] ? 0x10 : 0x0) |
         (is_local ? 0x20 : 0x0),
         portal_mask,
-        0,
+        asuint(_Time.y),
         mesh_probe_count
     );
 }
@@ -259,6 +260,7 @@ static Header Header::decode(uint4 pixel) {
     h.stereo_eye_in_portal[1] = pixel.x & 0x10;
     h.is_local = pixel.x & 0x20;
     h.portal_mask = pixel.y;
+    h.time = asfloat(pixel.z);
     h.mesh_probe_count = pixel.w;
     return h;
 }

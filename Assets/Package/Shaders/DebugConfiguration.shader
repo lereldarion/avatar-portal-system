@@ -29,7 +29,6 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
             #include "portal.hlsl"
 
             uniform Texture2D<uint4> _Portal_State;
-            uniform Texture2D<half4> _Lereldarion_Portal_Seal_GrabPass;
             uniform float4 _VRChatScreenCameraRot;
             uniform float4 _VRChatPhotoCameraRot;
             uniform uint _Portal_Debug_Show;

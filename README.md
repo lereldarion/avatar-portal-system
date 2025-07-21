@@ -35,10 +35,17 @@ For now there is no way to animate it or fine-tune specific parts.
 
 ### TODO
 
-Discard Lag Bug :
-- Conditions : VR, camera in world, object in world in front of portal background
-- Waving hand in this condition : incoherent border of objects that "lag" and show through the world.
-- Grabpass from last frame ? Stereo Offsets lagging ? Only in VR SPS-I
+Lag Bugs :
+- Portal surface lag discards
+    - Conditions : VR, camera in world, object in world in front of portal background
+    - Waving hand in this condition : incoherent border of objects that "lag" and show through the world.
+    - Grabpass from last frame ? Stereo Offsets lagging ? Only in VR SPS-I
+- Debug config mesh probe position is lagging. Should not be...
+    - Happens both in VR and desktop.
+    - Camera pos are tracked without lag.
+    - Disabling seal interface grabpass = still lagging
+- Forcing reset buffer on cameras does not change anything for any
+- Add timestamps checks for grabpass and camera loop : matches the same frame. Dammit.
 
 Normal TODOs
 - locally fix head state to camera state as desync is annoying

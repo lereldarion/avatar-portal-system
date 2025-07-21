@@ -33,7 +33,6 @@ Shader "Lereldarion/Portal/Update" {
 
         CGINCLUDE
         #pragma target 5.0
-        #pragma multi_compile_instancing
         #include "UnityCG.cginc"
 
         bool rendering_in_orthographic_camera_with_far_plane(float far_plane) {
@@ -278,7 +277,7 @@ Shader "Lereldarion/Portal/Update" {
             }
             
             [instance(32)] // One per horizontal line
-            [maxvertexcount(32)]
+            [maxvertexcount(32 + 29 /*FIXME debug probe config copy*/)]
             void geometry_stage(point MeshData input[1], uint primitive_id : SV_PrimitiveID, uint instance : SV_GSInstanceID, inout PointStream<PixelData> stream) {
                 UNITY_SETUP_INSTANCE_ID(input[0]);
 
@@ -295,9 +294,9 @@ Shader "Lereldarion/Portal/Update" {
                 header.portal_mask = 0x0;
                 
                 // Update camera positions
-                const float3 new_camera_pos[2] = { _VRChatScreenCameraPos, _VRChatPhotoCameraPos };
                 if(instance < 2) {
-                    PixelData::emit(stream, uint2(0, 1 + instance), CameraPosition::encode(new_camera_pos[instance]));
+                    const float3 new_camera_pos = instance == 0 ? _VRChatScreenCameraPos : _VRChatPhotoCameraPos;
+                    PixelData::emit(stream, uint2(0, 1 + instance), CameraPosition::encode(new_camera_pos));
                 }
 
                 // Every thread will load the full old and new portal info and build the portal mask.
@@ -327,12 +326,9 @@ Shader "Lereldarion/Portal/Update" {
                     const MeshProbeConfig config = MeshProbeConfig::decode(_Portal_RT0[uint2(3 + column, instance + 32)]);
                     MeshProbeState state = MeshProbeState::decode(_Portal_RT0[uint2(3 + column, instance)]);
 
-                    bool has_parent = false;
-                    MeshProbeState parent_state = (MeshProbeState) 0; // Read only if has_parent, but compiler cannot prove it and complains if not initialized.
-                    if(config.parent != MeshProbeConfig::no_parent) {
-                        parent_state = MeshProbeState::decode(_Portal_RT0, config.parent);
-                        has_parent = true;
-                    }
+                    // Always read parent but use is conditional on validity.
+                    const MeshProbeState parent_state = MeshProbeState::decode(_Portal_RT0, config.parent);
+                    const bool has_parent = config.parent != MeshProbeConfig::no_parent;
 
                     // Scan portals once and gather all relevant intersection data
                     uint portal_mask = active_portals_old_new;
@@ -386,12 +382,11 @@ Shader "Lereldarion/Portal/Update" {
                         header.camera_in_portal[1] = false;
                     } else {
                         // Update camera states
-                        const float3 old_camera_pos[2] = { CameraPosition::decode(_Portal_RT0, 0), CameraPosition::decode(_Portal_RT0, 1) };
-                        const bool update_camera[2] = {
-                            is_movement_valid(old_camera_pos[0], new_camera_pos[0]),
-                            // Photo camera when disabled is set to exact (0, 0, 0), ignore it as well
-                            is_movement_valid(old_camera_pos[1], new_camera_pos[1]) && all(old_camera_pos[1] != 0) && all(new_camera_pos[1] != 0),
-                        };
+                        const float3 old_screen_camera_pos = CameraPosition::decode(_Portal_RT0, 0);
+                        const float3 old_photo_camera_pos = CameraPosition::decode(_Portal_RT0, 1);
+                        const bool update_screen_camera = is_movement_valid(old_screen_camera_pos, _VRChatScreenCameraPos);
+                        // Photo camera when disabled is set to exact (0, 0, 0), ignore it as well
+                        const bool update_photo_camera = is_movement_valid(old_photo_camera_pos, _VRChatPhotoCameraPos) && all(old_photo_camera_pos != 0) && all(_VRChatPhotoCameraPos != 0);
                         
                         uint portal_mask = portals_with_valid_movement;
                         [loop] while(portal_mask) {
@@ -399,10 +394,11 @@ Shader "Lereldarion/Portal/Update" {
                             const Portal old_portal = Portal::decode(_Portal_RT0, index);
                             const Portal new_portal = Portal::decode(_Portal_RT0, index + 32);
     
-                            [unroll] for(uint i = 0; i < 2; i += 1) {
-                                if(update_camera[i] && Portal::movement_intersect(old_portal, new_portal, old_camera_pos[i], new_camera_pos[i]) & 0x1) {
-                                    header.camera_in_portal[i] = !header.camera_in_portal[i];
-                                }
+                            if(update_screen_camera && Portal::movement_intersect(old_portal, new_portal, old_screen_camera_pos, _VRChatScreenCameraPos) & 0x1) {
+                                header.camera_in_portal[0] = !header.camera_in_portal[0];
+                            }
+                            if(update_photo_camera && Portal::movement_intersect(old_portal, new_portal, old_photo_camera_pos, _VRChatPhotoCameraPos) & 0x1) {
+                                header.camera_in_portal[1] = !header.camera_in_portal[1];
                             }
                         }
                     }
@@ -424,10 +420,11 @@ Shader "Lereldarion/Portal/Update" {
                         [loop] while(portal_mask) {
                             const uint index = pop_active_portal(portal_mask);
                             const Portal new_portal = Portal::decode(_Portal_RT0, index + 32);
-                            [unroll] for(uint i = 0; i < 2; i += 1) {
-                                if(new_portal.segment_intersect(_VRChatScreenCameraPos, stereo_eye_ws[i])) {
-                                    header.stereo_eye_in_portal[i] = !header.stereo_eye_in_portal[i];
-                                }
+                            if(new_portal.segment_intersect(_VRChatScreenCameraPos, stereo_eye_ws[0])) {
+                                header.stereo_eye_in_portal[0] = !header.stereo_eye_in_portal[0];
+                            }
+                            if(new_portal.segment_intersect(_VRChatScreenCameraPos, stereo_eye_ws[1])) {
+                                header.stereo_eye_in_portal[1] = !header.stereo_eye_in_portal[1];
                             }
                         }
                     }

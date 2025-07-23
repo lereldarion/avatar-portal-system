@@ -49,10 +49,14 @@ Lag Bugs :
     - Happens both in VR and desktop.
     - Camera pos are tracked without lag.
     - Disabling seal interface grabpass = still lagging
-- Forcing reset buffer on cameras does not change anything for any
-- Add timestamps checks for grabpass and camera loop : matches the same frame. Dammit.
+    - Direct Skinned points are synced.
+    - Debug with RT0 data : overlaps with same lag as RT1. Interesting ! Order of camera does not change anything, not good.
+- Forcing reset buffer on cameras does not change anything for both
+- Add timestamps checks for grabpass and camera loop : matches the same frame. Dammit. Add update count in header (tick-tock) : two passes, usually RT1 ends up with 1 mod 2.
+- split update shader in 2 ? single camera to track stuff ?
 
 Normal TODOs
+- new bug with incoherence fix : if head toggles while walking backward, resets camera but shouldnt. maybe consequence of mesh probe lag bug...
 - shadowcaster setup is not good : try to think of a semantic that works, probably distinguish between shadowcaster from camera and from lights
 - poiyomi integration
 - nice visuals. Background from DepthTexture ? Borders with VHS effect ?

@@ -431,7 +431,7 @@ Shader "Lereldarion/Portal/Update" {
                     }
 
                     // Fix main camera to head state if mismatch not explained by portal intersection
-                    if(_IsLocal && header.main_camera_in_portal != head_mesh_probe_in_portal && !bool(main_camera_to_head_mesh_probe_intersection_count & 0x1)) {
+                    if(_IsLocal && header.main_camera_in_portal != head_mesh_probe_in_portal && (main_camera_to_head_mesh_probe_intersection_count & 0x1) == 0x0) {
                         header.main_camera_in_portal = head_mesh_probe_in_portal;
                     }
 

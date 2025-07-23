@@ -102,8 +102,6 @@ Shader "Lereldarion/Portal/Seal Interface" {
 
                     PixelData::emit(stream, uint2(0, 0), pixels[0]);
                     PixelData::emit(stream, uint2(1, 0), pixels[1]);
-
-                    //FIXME debug PixelData::emit(stream, uint2(2, 0), half4((asuint(_Time.y) >> uint4(24, 16, 8, 0)) & 0xFF));
                 }
             }
             ENDCG
@@ -333,7 +331,7 @@ Shader "Lereldarion/Portal/Seal Interface" {
             Name "Portal Surfaces Shadowcaster"
 	        Tags { "LightMode" = "ShadowCaster" }
 
-            // Emit portal surfaces as opaque for shadows.
+            // Emit portal surfaces as opaque for shadows. FIXME needs improvements
 
             Cull Off
 

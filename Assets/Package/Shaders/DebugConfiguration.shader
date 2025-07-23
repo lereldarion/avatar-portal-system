@@ -98,7 +98,7 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
             }
             
             [instance(32)]
-            [maxvertexcount(9 + 6 + 2 * 10)]
+            [maxvertexcount(9 + 6 + 2 * 30)]
             void geometry_stage(point MeshData input[1], uint primitive_id : SV_PrimitiveID, uint instance : SV_GSInstanceID, inout LineStream<LinePoint> stream) {
                 UNITY_SETUP_INSTANCE_ID(input[0]);
                 if(primitive_id > 0 || !_Portal_Debug_Show) { return; }

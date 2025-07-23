@@ -4,7 +4,6 @@ using AnimatorAsCode.V1;
 using nadena.dev.ndmf;
 using UnityEngine;
 using AnimatorAsCode.V1.VRC;
-using Cysharp.Threading.Tasks;
 
 [assembly: ExportsPlugin(typeof(Lereldarion.Portal.GeneratePortalSystemPlugin))]
 

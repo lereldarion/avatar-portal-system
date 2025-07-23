@@ -39,7 +39,7 @@ Shader "Lereldarion/Portal/Standard"
 
         [Enum(UV0,0,UV1,1)] _UVSec ("UV Set for secondary textures", Float) = 0
 
-        [NoScaleOffset] _Portal_State("Portal state texture", 2D) = ""
+        [NoScaleOffset] _Portal_State("Portal state texture", 2D) = "" {}
 
         // Blending state
         [HideInInspector] _Mode ("__mode", Float) = 0.0

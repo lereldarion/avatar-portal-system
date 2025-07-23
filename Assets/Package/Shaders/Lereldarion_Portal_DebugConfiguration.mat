@@ -35,8 +35,12 @@ Material:
     m_Ints:
     - _Portal_Debug_Show: 0
     - _Portal_Debug_Show_Camera: 1
+    - _Portal_Debug_Show_MeshProbe: 1
+    - _Portal_Debug_Show_Portal: 1
     m_Floats:
     - _Portal_Data_Source: 1
     - _Use_Portal_CRT: 1
-    m_Colors: []
+    m_Colors:
+    - _Portal_Debug_Color_Portal: {r: 1, g: 0, b: 0, a: 1}
+    - _Portal_Debug_Color_World: {r: 0, g: 1, b: 0, a: 1}
   m_BuildTextureStacks: []

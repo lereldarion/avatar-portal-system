@@ -1,7 +1,7 @@
 
 Shader "Lereldarion/Portal/Seal Interface" {
     Properties {
-        [NoScaleOffset] _Portal_State("Portal state texture", 2D) = ""
+        [NoScaleOffset] _Portal_State("Portal state texture", 2D) = "" {}
         _Portal_Seal_Stencil_Bit("Power of 2 bit used to avoid repetition when sealing", Integer) = 64        
     }
     SubShader {

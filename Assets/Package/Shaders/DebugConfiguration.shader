@@ -1,9 +1,17 @@
 
 Shader "Lereldarion/Portal/DebugConfiguration" {
     Properties {
-        [NoScaleOffset] _Portal_State("State texture", 2D) = ""
-        [ToggleUI] _Portal_Debug_Show("Show anything", Integer) = 1
-        [ToggleUI] _Portal_Debug_Show_Camera("Show cameras", Integer) = 0
+        [NoScaleOffset] _Portal_State("State texture", 2D) = "" {}
+
+        [Header(Coloring)]
+        _Portal_Debug_Color_World("Color for world state", Color) = (0, 1, 0, 1)
+        _Portal_Debug_Color_Portal("Color for portal state", Color) = (1, 0, 0, 1)
+        
+        [Header(Debug elements)]
+        [ToggleUI] _Portal_Debug_Show("Show Anything", Integer) = 1
+        [ToggleUI] _Portal_Debug_Show_Camera("Show Cameras", Integer) = 0
+        [ToggleUI] _Portal_Debug_Show_Portal("Show Portal Outlines", Integer) = 0
+        [ToggleUI] _Portal_Debug_Show_MeshProbe("Show Mesh Probe tree", Integer) = 0
     }
     SubShader {
         Tags {
@@ -28,11 +36,18 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
             #include "UnityCG.cginc"
             #include "portal.hlsl"
 
-            uniform Texture2D<uint4> _Portal_State;
             uniform float4 _VRChatScreenCameraRot;
             uniform float4 _VRChatPhotoCameraRot;
+            
+            uniform Texture2D<uint4> _Portal_State;
+
+            uniform half3 _Portal_Debug_Color_World;
+            uniform half3 _Portal_Debug_Color_Portal;
+            
             uniform uint _Portal_Debug_Show;
             uniform uint _Portal_Debug_Show_Camera;
+            uniform uint _Portal_Debug_Show_Portal;
+            uniform uint _Portal_Debug_Show_MeshProbe;
 
             struct MeshData {
                 UNITY_VERTEX_INPUT_INSTANCE_ID
@@ -92,7 +107,7 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
                 const Header header = Header::decode(_Portal_State);
 
                 // Draw portals
-                if((0x1 << instance) & header.portal_mask) {
+                if(_Portal_Debug_Show_Portal && bool((0x1 << instance) & header.portal_mask)) {
                     const Portal p = Portal::decode(_Portal_State, instance);
                     drawer.set_color(hue_shift_yiq(half3(1, 0, 0), instance / 8.0 * UNITY_TWO_PI));
                     if(!p.is_ellipse) {
@@ -119,7 +134,7 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
                     const float s = 0.1;
                     if(distance(position, _WorldSpaceCameraPos) > s) {
                         const bool in_portal = instance == 0 ? header.main_camera_in_portal : header.photo_camera_in_portal;
-                        drawer.set_color(half3(in_portal, !in_portal, 0));
+                        drawer.set_color(in_portal ? _Portal_Debug_Color_Portal : _Portal_Debug_Color_World);
                         stream.RestartStrip();
                         drawer.solid_ws(stream, position + quaternion_rotate(rotation, -float3(s, 0, 0)));
                         drawer.solid_ws(stream, position + quaternion_rotate(rotation,  float3(s, 0, 0)));
@@ -133,14 +148,15 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
                 }
 
                 // Mesh Probes
-                for(uint column = 0; column * 32 + instance < header.mesh_probe_count; column += 1) {
+                const uint mesh_probe_count = _Portal_Debug_Show_MeshProbe ? header.mesh_probe_count : 0;
+                for(uint column = 0; column * 32 + instance < mesh_probe_count; column += 1) {
                     const MeshProbeState state = MeshProbeState::decode(_Portal_State[uint2(3 + column, instance)]);
                     const MeshProbeConfig config = MeshProbeConfig::decode(_Portal_State[uint2(3 + column, instance + 32)]);
                     if(config.parent != MeshProbeConfig::no_parent) {
                         const MeshProbeState parent_state = MeshProbeState::decode(_Portal_State, config.parent);
                         stream.RestartStrip();
-                        drawer.solid_ws(stream, state.position, half3(state.in_portal, !state.in_portal, 0));
-                        drawer.solid_ws(stream, parent_state.position, half3(parent_state.in_portal, !parent_state.in_portal, 0));
+                        drawer.solid_ws(stream, state.position, state.in_portal ? _Portal_Debug_Color_Portal : _Portal_Debug_Color_World);
+                        drawer.solid_ws(stream, parent_state.position, parent_state.in_portal ? _Portal_Debug_Color_Portal : _Portal_Debug_Color_World);
                     }
                 }
             }

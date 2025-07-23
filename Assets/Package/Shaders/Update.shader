@@ -10,8 +10,8 @@ Shader "Lereldarion/Portal/Update" {
         _Valid_Movement_Max_Distance("Maximum distance allowed to consider a movement legit (no TP)", Float) = 1
         
         [Header(Render textures)]
-        [NoScaleOffset] _Portal_RT0("RT0", 2D) = ""
-        [NoScaleOffset] _Portal_RT1("RT1", 2D) = ""
+        [NoScaleOffset] _Portal_RT0("RT0", 2D) = "" {}
+        [NoScaleOffset] _Portal_RT1("RT1", 2D) = "" {}
         
         [Header(Animator controls)]
         [ToggleUI] _Portal_System_Enabled("Set enabled flag in state texture", Integer) = 1

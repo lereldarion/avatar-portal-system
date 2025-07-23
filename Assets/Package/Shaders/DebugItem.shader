@@ -3,7 +3,7 @@ Shader "Lereldarion/Portal/DebugItem" {
     Properties {
         _Color("Color", Color) = (1, 1, 1, 0)
 
-        [NoScaleOffset] _Portal_State("Portal state texture", 2D) = ""
+        [NoScaleOffset] _Portal_State("Portal state texture", 2D) = "" {}
     }
     SubShader {
         Tags {

@@ -40,23 +40,14 @@ For now there is no way to animate it or fine-tune specific parts.
 
 ### TODO
 
-Lag Bugs :
-- Portal surface lag discards
-    - Conditions : VR, camera in world, object in world in front of portal background
-    - Waving hand in this condition : incoherent border of objects that "lag" and show through the world.
-    - Grabpass from last frame ? Stereo Offsets lagging ? Only in VR SPS-I
-- Debug config mesh probe position is lagging. Should not be...
-    - Happens both in VR and desktop.
-    - Camera pos are tracked without lag.
-    - Disabling seal interface grabpass = still lagging
-    - Direct Skinned points are synced.
-    - Debug with RT0 data : overlaps with same lag as RT1. Interesting ! Order of camera does not change anything, not good.
+Portal surface lag discards bug
+- Conditions : VR, camera in world, object in world in front of portal background
+- Waving hand in this condition : incoherent border of objects that "lag" and show through the world.
+- Grabpass from last frame ? Stereo Offsets lagging ? Only in VR SPS-I
 - Forcing reset buffer on cameras does not change anything for both
-- Add timestamps checks for grabpass and camera loop : matches the same frame. Dammit. Add update count in header (tick-tock) : two passes, usually RT1 ends up with 1 mod 2.
-- split update shader in 2 ? single camera to track stuff ?
+- Was not fixed by camera order fix for data lag bug
 
 Normal TODOs
-- new bug with incoherence fix : if head toggles while walking backward, resets camera but shouldnt. maybe consequence of mesh probe lag bug...
 - shadowcaster setup is not good : try to think of a semantic that works, probably distinguish between shadowcaster from camera and from lights
 - poiyomi integration
 - nice visuals. Background from DepthTexture ? Borders with VHS effect ?

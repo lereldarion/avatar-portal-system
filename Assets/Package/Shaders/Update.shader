@@ -389,7 +389,7 @@ Shader "Lereldarion/Portal/Update" {
                             }
                             if(is_head_probe) {
                                 // Count portal intersections between head probe and main camera current positions
-                                main_camera_to_head_mesh_probe_intersection_count += new_portal.segment_intersect(state.position, _VRChatScreenCameraPos) ? 1 : 0;
+                                main_camera_to_head_mesh_probe_intersection_count += new_portal.segment_intersect(config.position, _VRChatScreenCameraPos) ? 1 : 0;
                             }
                         }
                     }

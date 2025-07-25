@@ -22,6 +22,7 @@ namespace Lereldarion.Portal
         public Material Update;
         public Camera Camera0;
         public Camera Camera1;
+        public GameObject CameraContainer;
 
         [Header("Visuals")]
         public Renderer Visuals;

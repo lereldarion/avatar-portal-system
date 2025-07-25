@@ -27,6 +27,10 @@ Material:
         m_Texture: {fileID: 8400000, guid: 81a191f48182f6c48a2062125d3fca34, type: 2}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _Portal_RT0:
+        m_Texture: {fileID: 8400000, guid: bc450bf488e8c344f8ee243a4e4f6aab, type: 2}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _Portal_State:
         m_Texture: {fileID: 8400000, guid: 81a191f48182f6c48a2062125d3fca34, type: 2}
         m_Scale: {x: 1, y: 1}

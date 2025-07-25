@@ -318,10 +318,6 @@ Shader "Lereldarion/Portal/Seal Interface" {
                 output_depth = clamped_depth_from_world_position(camera_ws + ray_ws * max_intersection_ray_distance);
 
                 // TODO portal visuals
-                /* FIXME debug const Header header = Header::decode(_Portal_State);
-                const uint4 grab_time_chunks = uint4(_Lereldarion_Portal_Seal_GrabPass[uint2(2, 0)]) << uint4(24, 16, 8, 0);
-                const float grab_time = asfloat(grab_time_chunks.x | grab_time_chunks.y | grab_time_chunks.z | grab_time_chunks.w);
-                return half4(header.time != _Time.y, abs(grab_time - _Time.y) > unity_DeltaTime.x * 0.9, 0, 1);*/
                 return half4(0, 0, 0, 1);
             }
             ENDCG

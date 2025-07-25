@@ -201,7 +201,7 @@ Shader "Lereldarion/Portal/Update" {
                             probe.parent = min((uint) parent, 0xFFFF);
                         }
                         const uint id = input.uv0.y;
-                        PixelData::emit(stream, uint2(3 + id / 32, id % 32 + 32), probe.encode());
+                        PixelData::emit(stream, uint2(3 + id / 32, (id % 32) + 32), probe.encode());
                         break;
                     }
                     default: break;

@@ -172,11 +172,14 @@ namespace Lereldarion.Portal
                 // Extend bounding box with animator.
                 clip.Scaling(context.System.Visuals.transform, context.System.OcclusionBoxSize * Vector3.one);
 
-                // Disable cameras and enable at runtime for VRC rules. Tested
+                // Disable cameras and enable at runtime for VRC rules. Tested.
                 context.System.Camera0.enabled = false;
                 context.System.Camera1.enabled = false;
                 clip.TogglingComponent(context.System.Camera0, true);
                 clip.TogglingComponent(context.System.Camera1, true);
+                // Lag bug seems fixed by toggling the system after load with both camera simultaneously, do that using container
+                context.System.CameraContainer.SetActive(false);
+                clip.Animating(edit => edit.Animates(context.System.CameraContainer).WithFrameCountUnit(curve => curve.Constant(0, 0).Constant(1, 1)));
 
                 var setup = layer.NewState("Init").WithAnimation(clip);
 

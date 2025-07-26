@@ -419,7 +419,7 @@ bool portal_shadowcaster_is_from_camera() {
     #endif
     const float3 context_camera_ws = mul(unity_CameraToWorld, float4(0, 0, 0, 1)).xyz;
     const float3 v = casting_camera_ws - context_camera_ws;
-    return dot(v, v) < 0.0001; // false = from light, true = from camera, 1cm tolerance
+    return dot(v, v) < 0.01; // false = from light, true = from camera, 1cm tolerance
 }
 
 void portal_shadowcaster_test(float3 fragment_world_pos, float2 portal_uv, Texture2D<uint4> state, float vrc_camera_mode, float vrc_mirror_mode) {

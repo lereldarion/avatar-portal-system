@@ -46,6 +46,7 @@ Dynamic shadow casting in unity works by combining 2 depth passes from camera an
 Having a coherent semantic with light going into portals does not seem doable, as we lack a grabpass to tag pixels during depth passes.
 The current system chooses to *stop* light at each portal interface.
 This is done by having shadowcasters block depth only on the light depth pass, and not the camera side (to avoid catching the shadow).
+This works ok but is not entirely coherent.
 
 ### TODO
 

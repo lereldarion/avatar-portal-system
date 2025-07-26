@@ -38,6 +38,9 @@ Thus by default the local avatar mesh would have head chop active (scale=0) and 
 The solution is to disable *head chop* with the `VRCHeadChop` component, and manually implement it with discard in the shader.
 For now there is no way to animate it or fine-tune specific parts.
 
+Head chop uses `is_local` from header so it fails if the system is never enabled.
+Ths alternative would be to animate it on every relevant renderer... annoying.
+
 ### TODO
 
 Portal surface lag discards bug
@@ -48,9 +51,10 @@ Portal surface lag discards bug
 - Was not fixed by camera order fix for data lag bug
 - Disabling stencil has no effect
 - Mirror can generate transitory artifacts. VR tests : large artifacts clearly due to mirror. Disabling alpha in mirror does not fix.
+- TODO Investigate mirror frame structure with frame analyzer
 
 Normal TODOs
-- shadowcaster setup is not good : try to think of a semantic that works, probably distinguish between shadowcaster from camera and from lights
+- shadowcaster setup is not good : try to think of a semantic that works
 - maybe try to support mirrors ; for now the avatar show as without any portal system in mirrors.
 - poiyomi integration
 - nice visuals. Background from DepthTexture ? Borders with VHS effect ?

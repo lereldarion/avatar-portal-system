@@ -108,10 +108,7 @@ Shader "Lereldarion/Portal/Standard"
             }
             half4 fragBaseP (VertexOutputForwardBase i, nointerpolation float2 portal_uv : PORTAL_UV) : SV_Target {
                 half4 pixel = fragBase(i);
-                pixel.a = portal_fragment_test(
-                    IN_WORLDPOS(i), portal_uv,
-                    _Portal_State, _VRChatCameraMode, _VRChatMirrorMode
-                );
+                pixel.a = portal_fragment_test(IN_WORLDPOS(i), portal_uv, _Portal_State, _VRChatCameraMode, _VRChatMirrorMode);
                 return pixel;
             }
 
@@ -158,10 +155,7 @@ Shader "Lereldarion/Portal/Standard"
             }
             half4 fragAddP (VertexOutputForwardAdd i, nointerpolation float2 portal_uv : PORTAL_UV) : SV_Target {
                 half4 pixel = fragAdd(i);
-                portal_fragment_test(
-                    i.posWorld, portal_uv,
-                    _Portal_State, _VRChatCameraMode, _VRChatMirrorMode
-                );
+                portal_fragment_test(i.posWorld, portal_uv, _Portal_State, _VRChatCameraMode, _VRChatMirrorMode);
                 return pixel;
             }
 
@@ -239,7 +233,7 @@ Shader "Lereldarion/Portal/Standard"
             {
                 UNITY_SETUP_INSTANCE_ID(input);
 
-                portal_shadowcaster_test(world_pos, portal_uv, _Portal_State);
+                portal_shadowcaster_test(world_pos, portal_uv, _Portal_State, _VRChatCameraMode, _VRChatMirrorMode);
 
                 #if defined(UNITY_STANDARD_USE_SHADOW_UVS)
                     #if defined(_PARALLAXMAP) && (SHADER_TARGET >= 30)

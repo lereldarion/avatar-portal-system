@@ -408,10 +408,27 @@ float portal_fragment_test(float3 fragment_world_pos, float2 portal_uv, Texture2
     return alpha;
 }
 
-void portal_shadowcaster_test(float3 fragment_world_pos, float2 portal_uv, Texture2D<uint4> state) {
-    // Shadowcaster : kill if mesh part in portal space
+void portal_shadowcaster_test(float3 fragment_world_pos, float2 portal_uv, Texture2D<uint4> state, float vrc_camera_mode, float vrc_mirror_mode) {
+    // Shadowcasters run from light and camera point of views : https://catlikecoding.com/unity/tutorials/rendering/part-7/
+    // Determine which one we have by comparing centered V matrix to cameraToWorld which should stick to the context camera.
+    #if defined(USING_STEREO_MATRICES)
+    const float3 shadowcaster_camera_ws = mul(unity_StereoMatrixInvV[0], float4(0, 0, 0, 0.5)).xyz + mul(unity_StereoMatrixInvV[1], float4(0, 0, 0, 0.5)).xyz;
+    #else
+    const float3 shadowcaster_camera_ws = mul(unity_MatrixInvV, float4(0, 0, 0, 1)).xyz;
+    #endif
+    const float3 rendering_camera_ws = mul(unity_CameraToWorld, float4(0, 0, 0, 1)).xyz;
+    const float3 v = shadowcaster_camera_ws - rendering_camera_ws;
+    const bool shadowcaster_from_camera = dot(v, v) < 0.0001; // false = from light, true = from camera ; allow 1 cm difference
+
+    const bool pixel_affected_by_head_chop = portal_uv.y == 1;
+
     Header header = Header::decode(state);
-    if(header.is_enabled) {
+
+    // Keep pixel from shadowcast from light to block light, but not from camera view.
+    bool discard_pixel = header.is_local && pixel_affected_by_head_chop && vrc_camera_mode == 0 && vrc_mirror_mode == 0 && shadowcaster_from_camera;
+
+    // Shadowcaster : kill if mesh part in portal space TODO improve
+    if(!discard_pixel && header.is_enabled) {
         const uint mesh_probe_id = portal_uv.x;
         const MeshProbeState mesh_probe = MeshProbeState::decode(state, mesh_probe_id);
         bool fragment_in_portal = mesh_probe.in_portal;
@@ -425,11 +442,10 @@ void portal_shadowcaster_test(float3 fragment_world_pos, float2 portal_uv, Textu
             }
         }
 
-        if(fragment_in_portal) { discard; }
+        discard_pixel = fragment_in_portal;
     }
-
-    // TODO add discard test IsLocal Head to replace HeadChop.
-    // To replicate headchop, This should keep pixels in light shadowcaster but not in camera one ?
+    
+    if(discard_pixel) { discard; }
 }
 
 #endif

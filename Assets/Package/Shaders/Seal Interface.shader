@@ -346,6 +346,7 @@ Shader "Lereldarion/Portal/Seal Interface" {
             #include "portal.hlsl"
 
             uniform Texture2D<uint4> _Portal_State;
+            uniform float _VRChatMirrorMode;
 
             struct MeshData {
                 UNITY_VERTEX_INPUT_INSTANCE_ID
@@ -376,8 +377,9 @@ Shader "Lereldarion/Portal/Seal Interface" {
             void geometry_stage(point MeshData input[1], uint primitive_id : SV_PrimitiveID, uint instance : SV_GSInstanceID, inout TriangleStream<FragmentData> stream) {
                 UNITY_SETUP_INSTANCE_ID(input[0]);
 
-                // Input mesh just needs one point
-                if(primitive_id != 0) { return ; }
+                // First primitive is sufficient to cover all portals
+                const bool shadowcaster_is_from_light = !portal_shadowcaster_is_from_camera();
+                if(!(primitive_id == 0 && _VRChatMirrorMode == 0 && shadowcaster_is_from_light)) { return ; }
 
                 FragmentData output;
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);

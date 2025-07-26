@@ -341,13 +341,13 @@ float portal_fragment_test(float3 fragment_world_pos, float2 portal_uv, Texture2
         return 1;
     }
 
-    float alpha = 1;
-
-    Header header = Header::decode(state);
+    const bool pixel_affected_by_head_chop = portal_uv.y == 1;
+    const Header header = Header::decode(state);
     
     // Head chop replacement
-    const bool pixel_affected_by_head_chop = portal_uv.y == 1;
     bool discard_pixel = header.is_local && pixel_affected_by_head_chop && vrc_camera_mode == 0 && vrc_mirror_mode == 0;
+    
+    float alpha = 1;
 
     if(!discard_pixel && header.is_enabled) {
         const bool camera_in_portal = header.camera_portal_state(vrc_camera_mode);
@@ -366,8 +366,9 @@ float portal_fragment_test(float3 fragment_world_pos, float2 portal_uv, Texture2
         const float3 camera_ws = _WorldSpaceCameraPos;
         #endif
         
-        [loop] while(header.portal_mask) {
-            const uint index = pop_active_portal(header.portal_mask);
+        uint portal_mask = header.portal_mask;
+        [loop] while(portal_mask) {
+            const uint index = pop_active_portal(portal_mask);
             const bool traversing_portal = mesh_probe.traversing_portal_mask & (0x1 << index);
 
             const PortalPixel0 p0 = PortalPixel0::decode(state, index);
@@ -408,24 +409,25 @@ float portal_fragment_test(float3 fragment_world_pos, float2 portal_uv, Texture2
     return alpha;
 }
 
-void portal_shadowcaster_test(float3 fragment_world_pos, float2 portal_uv, Texture2D<uint4> state, float vrc_camera_mode, float vrc_mirror_mode) {
+bool portal_shadowcaster_is_from_camera() {
     // Shadowcasters run from light and camera point of views : https://catlikecoding.com/unity/tutorials/rendering/part-7/
     // Determine which one we have by comparing centered V matrix to cameraToWorld which should stick to the context camera.
     #if defined(USING_STEREO_MATRICES)
-    const float3 shadowcaster_camera_ws = mul(unity_StereoMatrixInvV[0], float4(0, 0, 0, 0.5)).xyz + mul(unity_StereoMatrixInvV[1], float4(0, 0, 0, 0.5)).xyz;
+    const float3 casting_camera_ws = mul(unity_StereoMatrixInvV[0], float4(0, 0, 0, 0.5)).xyz + mul(unity_StereoMatrixInvV[1], float4(0, 0, 0, 0.5)).xyz;
     #else
-    const float3 shadowcaster_camera_ws = mul(unity_MatrixInvV, float4(0, 0, 0, 1)).xyz;
+    const float3 casting_camera_ws = mul(unity_MatrixInvV, float4(0, 0, 0, 1)).xyz;
     #endif
-    const float3 rendering_camera_ws = mul(unity_CameraToWorld, float4(0, 0, 0, 1)).xyz;
-    const float3 v = shadowcaster_camera_ws - rendering_camera_ws;
-    const bool shadowcaster_from_camera = dot(v, v) < 0.0001; // false = from light, true = from camera ; allow 1 cm difference
+    const float3 context_camera_ws = mul(unity_CameraToWorld, float4(0, 0, 0, 1)).xyz;
+    const float3 v = casting_camera_ws - context_camera_ws;
+    return dot(v, v) < 0.0001; // false = from light, true = from camera, 1cm tolerance
+}
 
+void portal_shadowcaster_test(float3 fragment_world_pos, float2 portal_uv, Texture2D<uint4> state, float vrc_camera_mode, float vrc_mirror_mode) {
     const bool pixel_affected_by_head_chop = portal_uv.y == 1;
-
-    Header header = Header::decode(state);
+    const Header header = Header::decode(state);
 
     // Keep pixel from shadowcast from light to block light, but not from camera view.
-    bool discard_pixel = header.is_local && pixel_affected_by_head_chop && vrc_camera_mode == 0 && vrc_mirror_mode == 0 && shadowcaster_from_camera;
+    bool discard_pixel = header.is_local && pixel_affected_by_head_chop && vrc_camera_mode == 0 && vrc_mirror_mode == 0 && portal_shadowcaster_is_from_camera();
 
     // Shadowcaster : kill if mesh part in portal space TODO improve
     if(!discard_pixel && header.is_enabled) {

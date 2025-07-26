@@ -41,6 +41,12 @@ For now there is no way to animate it or fine-tune specific parts.
 Head chop uses `is_local` from header so it fails if the system is never enabled.
 Ths alternative would be to animate it on every relevant renderer... annoying.
 
+### Dynamic Shadows
+Dynamic shadow casting in unity works by combining 2 depth passes from camera and light to determine shadowed elements (see [catlikecoding](https://catlikecoding.com/unity/tutorials/rendering/part-7/)).
+Having a coherent semantic with light going into portals does not seem doable, as we lack a grabpass to tag pixels during depth passes.
+The current system chooses to *stop* light at each portal interface.
+This is done by having shadowcasters block depth only on the light depth pass, and not the camera side (to avoid catching the shadow).
+
 ### TODO
 
 Portal surface lag discards bug
@@ -54,7 +60,6 @@ Portal surface lag discards bug
 - TODO Investigate mirror frame structure with frame analyzer
 
 Normal TODOs
-- shadowcaster setup is not good : try to think of a semantic that works
 - maybe try to support mirrors ; for now the avatar show as without any portal system in mirrors.
 - poiyomi integration
 - nice visuals. Background from DepthTexture ? Borders with VHS effect ?

@@ -35,6 +35,7 @@ Shader "Lereldarion/Portal/Seal Interface" {
 
             uniform Texture2D<half4> _Lereldarion_Portal_Seal_GrabPass;
             uniform float _VRChatCameraMode;
+            uniform float _VRChatMirrorMode;
             uniform float3 _VRChatScreenCameraPos;
             uniform float4 _VRChatScreenCameraRot;
 
@@ -85,7 +86,7 @@ Shader "Lereldarion/Portal/Seal Interface" {
                 if(primitive_id == 0) {
                     half4 pixels[2];
 
-                    if(_VRChatCameraMode == 0) {
+                    if(_VRChatCameraMode == 0 && _VRChatMirrorMode == 0) {
                         #ifdef USING_STEREO_MATRICES
                         // Set pixels with VS eye offsets
                         pixels[0] = half4(quaternion_anti_rotate(_VRChatScreenCameraRot, unity_StereoWorldSpaceCameraPos[0] - _VRChatScreenCameraPos), 0);
@@ -145,6 +146,7 @@ Shader "Lereldarion/Portal/Seal Interface" {
 
             uniform Texture2D<uint4> _Portal_State;
             uniform float _VRChatCameraMode;
+            uniform float _VRChatMirrorMode;
 
             // portal ids of pixels of objects in portal space
             uniform Texture2D<float4> _Lereldarion_Portal_Seal_GrabPass;
@@ -176,8 +178,8 @@ Shader "Lereldarion/Portal/Seal Interface" {
             void geometry_stage(point MeshData input[1], uint primitive_id : SV_PrimitiveID, uint instance : SV_GSInstanceID, inout TriangleStream<FragmentData> stream) {
                 UNITY_SETUP_INSTANCE_ID(input[0]);
 
-                // Input mesh just needs one point
-                if(primitive_id != 0) { return ; }
+                // Only run on first point and outside mirrors
+                if(!(primitive_id == 0 && _VRChatMirrorMode == 0)) { return ; }
 
                 FragmentData output;
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);

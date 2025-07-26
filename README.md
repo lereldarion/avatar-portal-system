@@ -46,9 +46,12 @@ Portal surface lag discards bug
 - Grabpass from last frame ? Stereo Offsets lagging ? Only in VR SPS-I
 - Forcing reset buffer on cameras does not change anything for both
 - Was not fixed by camera order fix for data lag bug
+- Disabling stencil has no effect
+- Mirror can generate transitory artifacts. VR tests : large artifacts clearly due to mirror. Disabling alpha in mirror does not fix.
 
 Normal TODOs
 - shadowcaster setup is not good : try to think of a semantic that works, probably distinguish between shadowcaster from camera and from lights
+- maybe try to support mirrors ; for now the avatar show as without any portal system in mirrors.
 - poiyomi integration
 - nice visuals. Background from DepthTexture ? Borders with VHS effect ?
 - make nice package with instructions from template : https://github.com/vrchat-community/template-package

@@ -336,6 +336,11 @@ bool Header::camera_portal_state(float vrc_camera_mode) {
 
 // Render function. Returns alpha value used to drive sealing shader.
 float portal_fragment_test(float3 fragment_world_pos, float2 portal_uv, Texture2D<uint4> state, float vrc_camera_mode, float vrc_mirror_mode) {
+    // In mirror disable the system and shows as normal. TODO support mirrors properly ?
+    if(vrc_mirror_mode != 0) {
+        return 1;
+    }
+
     float alpha = 1;
 
     Header header = Header::decode(state);
@@ -424,6 +429,7 @@ void portal_shadowcaster_test(float3 fragment_world_pos, float2 portal_uv, Textu
     }
 
     // TODO add discard test IsLocal Head to replace HeadChop.
+    // To replicate headchop, This should keep pixels in light shadowcaster but not in camera one ?
 }
 
 #endif

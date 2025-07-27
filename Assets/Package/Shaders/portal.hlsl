@@ -1,3 +1,5 @@
+// Made by Lereldarion (https://github.com/lereldarion/avatar-portal-system). MIT license.
+
 #ifndef LERELDARION_PORTAL_H
 #define LERELDARION_PORTAL_H
 
@@ -5,6 +7,7 @@
 // Header at (0, 0).
 // - r : bit0 = system enabled, bit[1,2] = main/photo camera state, bit[3,4] = stereo eye state derived from main
 // - g : u32 is a bitmask of active portals for fast scan.
+// - a : u32 mesh probe count
 // Camera position pixels
 // - pixel = uint4 as float3(wpos.xyz).
 // - main camera as (0, 1), photo camera as (0, 2).

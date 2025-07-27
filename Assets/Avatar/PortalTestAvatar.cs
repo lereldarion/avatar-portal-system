@@ -1,3 +1,5 @@
+// Made by Lereldarion (https://github.com/lereldarion/avatar-portal-system). MIT license.
+
 #if UNITY_EDITOR
 using AnimatorAsCode.V1;
 using AnimatorAsCode.V1.ModularAvatar;
@@ -17,7 +19,7 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 namespace Lereldarion
 {
     /// <summary>
-    /// Root of a portal system.
+    /// Portal system demo avatar animator. Spawn up to 4 portals, toggle debug.
     /// </summary>
     [DisallowMultipleComponent]
     public class PortalTestAvatar : MonoBehaviour, IEditorOnly
@@ -40,7 +42,7 @@ namespace Lereldarion
         protected override void Configure()
         {
             InPhase(BuildPhase.Generating)
-            // Ensure portal scales are extracted before modifications
+            // Ensure portal scales are extracted before modifications, and root skinned mesh renderer has been created.
             .AfterPlugin("Lereldarion.Portal.GeneratePortalSystemPlugin")
             .Run(DisplayName, Generate);
         }

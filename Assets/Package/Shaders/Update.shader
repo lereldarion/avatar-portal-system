@@ -1,3 +1,5 @@
+// Made by Lereldarion (https://github.com/lereldarion/avatar-portal-system). MIT license.
+
 // Passes that are used to update the state in the camera loop.
 // 0 : camera 0 : copy RT1 to RT0 ; old position and states
 // 1 : camera 0 : extract new portal positions from system meshes to RT0 (upper part, +32 to y)

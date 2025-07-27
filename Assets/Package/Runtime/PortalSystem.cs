@@ -1,3 +1,5 @@
+// Made by Lereldarion (https://github.com/lereldarion/avatar-portal-system). MIT license.
+
 using UnityEngine;
 using IEditorOnly = VRC.SDKBase.IEditorOnly;
 

@@ -1,5 +1,7 @@
+// Made by Lereldarion (https://github.com/lereldarion/avatar-portal-system). MIT license.
 
-Shader "Lereldarion/Portal/DebugItem" {
+// Minimalist shader integration for a portal aware item. Only unlit color support and no shadowcaster.
+Shader "Lereldarion/Portal/UnlitDemo" {
     Properties {
         _Color("Color", Color) = (1, 1, 1, 0)
 
@@ -51,10 +53,7 @@ Shader "Lereldarion/Portal/DebugItem" {
             half4 fragment_stage (FragmentData input) : SV_Target {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
 
-                half portal_alpha_data = portal_fragment_test(
-                    input.world_position, input.portal_uv,
-                    _Portal_State, _VRChatCameraMode, _VRChatMirrorMode
-                );
+                half portal_alpha_data = portal_fragment_test(input.world_position, input.portal_uv, _Portal_State, _VRChatCameraMode, _VRChatMirrorMode);
                 
                 return half4(_Color.rgb, portal_alpha_data);
             }

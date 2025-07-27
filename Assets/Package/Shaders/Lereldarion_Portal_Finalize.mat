@@ -7,8 +7,8 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Lereldarion_Portal_DebugItem
-  m_Shader: {fileID: 4800000, guid: 2129d61674d9c464bb4e7e13dbd171fd, type: 3}
+  m_Name: Lereldarion_Portal_Finalize
+  m_Shader: {fileID: 4800000, guid: a39a00e5712434549b363769310ed68c, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -27,15 +27,16 @@ Material:
         m_Texture: {fileID: 8400000, guid: 81a191f48182f6c48a2062125d3fca34, type: 2}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _Portal_RT0:
+        m_Texture: {fileID: 8400000, guid: bc450bf488e8c344f8ee243a4e4f6aab, type: 2}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _Portal_State:
         m_Texture: {fileID: 8400000, guid: 81a191f48182f6c48a2062125d3fca34, type: 2}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Ints:
-    - _Item_Portal_State: 0
-    - _Portal_StencilBit: 128
-    m_Floats:
-    - _Camera_In_Portal: 0
-    m_Colors:
-    - _Color: {r: 1, g: 1, b: 1, a: 0}
+    - _Portal_Seal_Stencil_Bit: 64
+    m_Floats: []
+    m_Colors: []
   m_BuildTextureStacks: []

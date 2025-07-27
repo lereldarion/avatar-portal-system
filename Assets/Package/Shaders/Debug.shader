@@ -1,5 +1,7 @@
+// Made by Lereldarion (https://github.com/lereldarion/avatar-portal-system). MIT license.
 
-Shader "Lereldarion/Portal/DebugConfiguration" {
+// Visualize portal state as colored lines
+Shader "Lereldarion/Portal/Debug" {
     Properties {
         [NoScaleOffset] _Portal_State("State texture", 2D) = "" {}
 
@@ -21,7 +23,7 @@ Shader "Lereldarion/Portal/DebugConfiguration" {
         }
 
         Pass {
-            Name "Debug Configuration"
+            Name "Debug"
 
             ZTest Always
             ZWrite On

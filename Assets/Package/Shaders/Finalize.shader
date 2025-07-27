@@ -1,5 +1,7 @@
+// Made by Lereldarion (https://github.com/lereldarion/avatar-portal-system). MIT license.
 
-Shader "Lereldarion/Portal/Seal Interface" {
+// Passes that finalize the portal effect after all portal-aware objects have been rendered.
+Shader "Lereldarion/Portal/Finalize" {
     Properties {
         [NoScaleOffset] _Portal_State("Portal state texture", 2D) = "" {}
         _Portal_Seal_Stencil_Bit("Power of 2 bit used to avoid repetition when sealing", Integer) = 64        

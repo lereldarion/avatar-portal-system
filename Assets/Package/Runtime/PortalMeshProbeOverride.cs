@@ -1,9 +1,13 @@
+// Made by Lereldarion (https://github.com/lereldarion/avatar-portal-system). MIT license.
+
 using UnityEngine;
 using IEditorOnly = VRC.SDKBase.IEditorOnly;
 
 namespace Lereldarion.Portal
 {
     /// <summary>
+    /// Currently unused !
+    /// 
     /// Override automatic mesh probe position for bone.
     /// TODO find the right semantics. Potentially list of localpos + radius, or just auto compute radius
     /// Or count of probes and use clustering algorithm ?

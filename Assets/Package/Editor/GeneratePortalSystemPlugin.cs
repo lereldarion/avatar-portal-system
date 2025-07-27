@@ -1,3 +1,5 @@
+// Made by Lereldarion (https://github.com/lereldarion/avatar-portal-system). MIT license.
+
 using System.Linq;
 using System.Collections.Generic;
 using AnimatorAsCode.V1;
@@ -9,6 +11,12 @@ using AnimatorAsCode.V1.VRC;
 
 namespace Lereldarion.Portal
 {
+    /// <summary>
+    /// NDMF plugin that setup the system.
+    /// Creates the system mesh.
+    /// Sets uvs for mesh probe on existing meshes.
+    /// Creates the setup animator.
+    /// </summary>
     public class GeneratePortalSystemPlugin : Plugin<GeneratePortalSystemPlugin>
     {
         public override string DisplayName => "Lereldarion Portal System";

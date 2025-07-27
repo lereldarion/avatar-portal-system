@@ -1,5 +1,7 @@
 // Unity built-in shader source. Copyright (c) 2016 Unity Technologies. MIT license (see license.txt)
 
+// Modifications made by Lereldarion (https://github.com/lereldarion/avatar-portal-system). MIT license.
+// Modifications of an opaque standard shader to be portal-aware.
 Shader "Lereldarion/Portal/Standard"
 {
     Properties

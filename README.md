@@ -15,8 +15,10 @@ Typical hierarchy from avatar root :
 - Armature, containing transforms for portals with `PortalSurface` declarations
 - Avatar Renderers
 - `PortalSystem` : generated system mesh renderer. Toggle this `GameObject` to disable the system.
-    - `Camera0` : update 1st stage, writes `_Portal_RT0` (temporary)
-    - `Camera1` : update 2nd stage, writes `_Portal_RT1`, the system state texture for the frame.
+    - `Cameras` : container to force order of execution of cameras (lag bug, not reliable, fails if renamed !)
+        - `Camera0` : update 1st stage, writes `_Portal_RT0` (temporary)
+        - `Camera1` : update 2nd stage, writes `_Portal_RT1`, the system state texture for the frame.
+    - `Visuals` : a mesh renderer containing the `Finalize` shader, with a large bounding box to be shown at large distances
 
 ### Mesh support
 Portal mesh support is achieved by a combination of *portal-aware shaders* and *mesh probes*.

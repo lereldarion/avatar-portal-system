@@ -7,7 +7,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Lereldarion_Portal_DebugConfiguration
+  m_Name: Lereldarion_Portal_Debug
   m_Shader: {fileID: 4800000, guid: 3b43ec78a7373c449ae01bee7ac5e4d4, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0

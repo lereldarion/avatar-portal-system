@@ -1,5 +1,11 @@
 # Lereldarion Avatar Portal(s) System
 
+Status : experiment paused, proof of concept is working but too many issues to try to perfect it.
+
+Code / shader stuff is at [Assets/Package](Assets/Package/).
+
+A test avatar is available at https://vrchat.com/home/avatar/avtr_16641d57-cf95-4f98-a099-3d9eec0ffea5 if you want to test.
+
 ### Surfaces
 Declare portals on transforms using `PortalSurface` components.
 Control portal size and position with the transform.
